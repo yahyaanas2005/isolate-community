@@ -12,7 +12,24 @@ export default function DashboardPage() {
     const { availableTenants, switchTenant } = useTenant();
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
-    // ... (icons logic) ...
+
+    const getIcon = (type: string) => {
+        switch (type) {
+            case 'Physical': return <Building2 className="w-6 h-6 text-purple-400" />;
+            case 'Professional': return <Briefcase className="w-6 h-6 text-blue-400" />;
+            case 'Virtual': return <Gamepad2 className="w-6 h-6 text-teal-400" />;
+            default: return <LayoutGrid className="w-6 h-6 text-gray-400" />;
+        }
+    };
+
+    const getGradient = (type: string) => {
+        switch (type) {
+            case 'Physical': return 'from-purple-500/20 to-purple-900/10 hover:border-purple-500/50';
+            case 'Professional': return 'from-blue-500/20 to-blue-900/10 hover:border-blue-500/50';
+            case 'Virtual': return 'from-teal-500/20 to-teal-900/10 hover:border-teal-500/50';
+            default: return 'from-gray-800 to-gray-900';
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white p-8">
