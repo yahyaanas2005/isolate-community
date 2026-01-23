@@ -12,48 +12,51 @@ export async function handleAuth(formData: FormData) {
         password: formData.get('password') as string,
     }
 
-    // 1. Attempt Sign In
+    // 1. First, try to SIGN IN (Login)
+    // This covers: Existing User + Correct Password
     const { error: signInError } = await supabase.auth.signInWithPassword(data)
 
     if (!signInError) {
-        // Success: Existing user logged in
         revalidatePath('/', 'layout')
         redirect('/dashboard')
     }
 
-    // 2. If Sign In failed, check if it's because user doesn't exist?
-    // Supabase returns "Invalid login credentials" for both "Wrong Password" and "User Not Found".
-    // So we simply attempt Sign Up as the fallback.
+    // 2. If Sign In failed, it could be:
+    //    a) Wrong Password (for existing user)
+    //    b) User does not exist at all
+    //    c) System error
 
-    // Note: If user exists but typed WRONG password, SignUp will fail with "User already registered".
-    // This correctly prevents hijacking an account by just trying to "Sign Up" with it.
-
+    // We attempt SIGN UP to handle case (b).
     const { error: signUpError } = await supabase.auth.signUp({
         ...data,
         options: {
             data: {
-                // Optional: Capture name if we added it to form, currently defaulting to empty
                 full_name: '',
             }
         }
     })
 
     if (signUpError) {
-        // If both failed, it means:
-        // A) User exists + Wrong Password (signIn failed, then signUp says 'already registered')
-        // B) Some other error (network, rate limit)
-
-        // We redirect with a generic error, or try to be specific if we parse the message.
-        console.error('Auth Attempt Failed:', { signInError: signInError.message, signUpError: signUpError.message })
-
+        // 3. Analyze Sign Up Failure
+        // If it says "User already registered", it confirms Case (a): User Exists + Wrong Password.
         if (signUpError.message.includes('already registered')) {
-            redirect('/login?error=Account exists. Please check your password.')
+            redirect('/login?error=Account exists. Please enter the correct password.')
         }
 
-        redirect('/login?error=Authentication failed. Please try again.')
+        // Other errors (e.g. Rate limit, weak password)
+        console.error('Auth Error:', signUpError.message)
+        redirect(`/login?error=${encodeURIComponent(signUpError.message)}`)
     }
 
-    // Success: New user created and logged in (assuming 'Confirm Email' is disabled in Supabase)
+    // 4. Success Case (c): New User Created
+    // If 'Confirm Email' is disabled, they are now logged in.
     revalidatePath('/', 'layout')
     redirect('/dashboard')
+}
+
+export async function signOut() {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+    revalidatePath('/', 'layout')
+    redirect('/')
 }

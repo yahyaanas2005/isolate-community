@@ -6,27 +6,13 @@ import { Plus, Building2, Briefcase, Gamepad2, ArrowRight, LayoutGrid } from 'lu
 import { JoinCommunityModal } from '@/components/JoinCommunityModal';
 import { useState } from 'react';
 
+import { LogoutButton } from '@/components/LogoutButton';
+
 export default function DashboardPage() {
     const { availableTenants, switchTenant } = useTenant();
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
-    const getIcon = (type: string) => {
-        switch (type) {
-            case 'Physical': return <Building2 className="w-6 h-6 text-purple-400" />;
-            case 'Professional': return <Briefcase className="w-6 h-6 text-blue-400" />;
-            case 'Virtual': return <Gamepad2 className="w-6 h-6 text-teal-400" />;
-            default: return <LayoutGrid className="w-6 h-6 text-gray-400" />;
-        }
-    };
-
-    const getGradient = (type: string) => {
-        switch (type) {
-            case 'Physical': return 'from-purple-500/20 to-purple-900/10 hover:border-purple-500/50';
-            case 'Professional': return 'from-blue-500/20 to-blue-900/10 hover:border-blue-500/50';
-            case 'Virtual': return 'from-teal-500/20 to-teal-900/10 hover:border-teal-500/50';
-            default: return 'from-gray-800 to-gray-900';
-        }
-    };
+    // ... (icons logic) ...
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white p-8">
@@ -35,7 +21,7 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-bold tracking-tight mb-2">My Communities</h1>
                     <p className="text-white/50">Select a workspace to manage or collaborate.</p>
                 </div>
-                {/* Global Profile Menu could go here */}
+                <LogoutButton />
             </header>
 
             <main className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
