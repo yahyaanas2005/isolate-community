@@ -2,7 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Tenant } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
+
+const supabase = createClient();
 
 interface TenantContextType {
     tenant: Tenant | null;
@@ -19,28 +21,41 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        async function fetchTenants() {
+        async function fetchUserCommunities() {
             try {
-                const { data, error } = await supabase.from('tenants').select('*');
+                // 1. Get Current User
+                const { data: { user } } = await supabase.auth.getUser();
+
+                if (!user) {
+                    setLoading(false);
+                    return;
+                }
+
+                // 2. Fetch Memberships -> Tenants
+                // We join memberships with tenants to get the community details
+                const { data: memberships, error } = await supabase
+                    .from('memberships')
+                    .select('*, tenant:tenants(*)')
+                    .eq('user_id', user.id); // Although RLS forces this, good to be explicit
 
                 if (error) {
-                    console.error('Error fetching tenants:', error);
-                    // Fallback or empty state
-                } else if (data) {
-                    setAvailableTenants(data as Tenant[]);
-                    if (data.length > 0) {
-                        // Default to first tenant if none selected
-                        setTenant(data[0] as Tenant);
-                    }
+                    console.error('Error fetching communities:', error);
+                } else if (memberships) {
+                    // Extract tenants from memberships
+                    // @ts-ignore
+                    const myTenants = memberships.map(m => m.tenant).filter(Boolean) as Tenant[];
+                    setAvailableTenants(myTenants);
+
+                    // Do NOT auto-select a tenant. Allow "null" state for the Dashboard Grid.
                 }
             } catch (e) {
-                console.error('Unexpected error fetching tenants:', e);
+                console.error('Unexpected error fetching communities:', e);
             } finally {
                 setLoading(false);
             }
         }
 
-        fetchTenants();
+        fetchUserCommunities();
     }, []);
 
     const switchTenant = (slug: string) => {
@@ -53,10 +68,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return (
         <TenantContext.Provider value={{ tenant, availableTenants, switchTenant, loading }}>
             {loading ? (
-                <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <p className="text-gray-500 text-sm">Loading communities...</p>
+                <div className="min-h-screen flex items-center justify-center bg-black text-white">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
+                        <p className="text-white/50 text-sm font-medium animate-pulse">Loading your world...</p>
                     </div>
                 </div>
             ) : (
