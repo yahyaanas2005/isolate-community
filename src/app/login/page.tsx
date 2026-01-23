@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { login, signup } from "./actions";
+import { handleAuth } from "./actions";
 
 export default function LoginPage() {
     return (
@@ -28,9 +28,9 @@ export default function LoginPage() {
             <div className="flex flex-col items-center justify-center p-6 bg-black">
                 <div className="w-full max-w-md space-y-8">
                     <div className="text-center lg:text-left">
-                        <h2 className="text-3xl font-bold">Sign in to your account</h2>
+                        <h2 className="text-3xl font-bold">Sign in or Join</h2>
                         <p className="mt-2 text-white/50">
-                            Or <Link href="/login?mode=signup" className="text-purple-400 hover:text-purple-300">create a new account</Link>
+                            Enter your email to continue.
                         </p>
                     </div>
 
@@ -71,18 +71,16 @@ export default function LoginPage() {
 
                         <div className="flex flex-col gap-4">
                             <button
-                                formAction={login}
+                                formAction={handleAuth}
                                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 active:scale-[0.98] transition-all"
                             >
-                                Sign in
-                            </button>
-                            <button
-                                formAction={signup}
-                                className="w-full flex justify-center py-3 px-4 border border-white/10 rounded-lg text-sm font-semibold text-white bg-white/5 hover:bg-white/10 focus:outline-none active:scale-[0.98] transition-all"
-                            >
-                                Sign up
+                                Sign In / Sign Up
                             </button>
                         </div>
+
+                        <p className="text-center text-xs text-white/30 mt-4">
+                            If account exists, we'll log you in. <br /> If not, user will be created automatically.
+                        </p>
                     </form>
                 </div>
             </div>
