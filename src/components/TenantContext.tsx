@@ -2,50 +2,66 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Tenant } from '@/lib/types';
-
-// Mock Tenants matching the SQL Seed Data
-const MOCK_TENANTS: Tenant[] = [
-    {
-        id: '11111111-1111-1111-1111-111111111111',
-        name: 'Sunnyvale Heights',
-        slug: 'sunnyvale-heights',
-        type: 'Physical',
-    },
-    {
-        id: '22222222-2222-2222-2222-222222222222',
-        name: 'Cardiology Association',
-        slug: 'cardio-assoc',
-        type: 'Professional',
-    },
-    {
-        id: '33333333-3333-3333-3333-333333333333',
-        name: 'Global Gamers',
-        slug: 'global-gamers',
-        type: 'Virtual',
-    },
-];
+import { supabase } from '@/lib/supabase';
 
 interface TenantContextType {
     tenant: Tenant | null;
     availableTenants: Tenant[];
     switchTenant: (slug: string) => void;
+    loading: boolean;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
-    const [tenant, setTenant] = useState<Tenant | null>(MOCK_TENANTS[0]);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
+    const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchTenants() {
+            try {
+                const { data, error } = await supabase.from('tenants').select('*');
+
+                if (error) {
+                    console.error('Error fetching tenants:', error);
+                    // Fallback or empty state
+                } else if (data) {
+                    setAvailableTenants(data as Tenant[]);
+                    if (data.length > 0) {
+                        // Default to first tenant if none selected
+                        setTenant(data[0] as Tenant);
+                    }
+                }
+            } catch (e) {
+                console.error('Unexpected error fetching tenants:', e);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchTenants();
+    }, []);
 
     const switchTenant = (slug: string) => {
-        const selected = MOCK_TENANTS.find((t) => t.slug === slug);
+        const selected = availableTenants.find((t) => t.slug === slug);
         if (selected) {
             setTenant(selected);
         }
     };
 
     return (
-        <TenantContext.Provider value={{ tenant, availableTenants: MOCK_TENANTS, switchTenant }}>
-            {children}
+        <TenantContext.Provider value={{ tenant, availableTenants, switchTenant, loading }}>
+            {loading ? (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <p className="text-gray-500 text-sm">Loading communities...</p>
+                    </div>
+                </div>
+            ) : (
+                children
+            )}
         </TenantContext.Provider>
     );
 }

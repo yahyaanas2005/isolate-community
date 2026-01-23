@@ -1,66 +1,52 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/components/TenantContext';
 import { Membership, PhysicalMemberData, ProfessionalMemberData, VirtualMemberData } from '@/lib/types';
-
-// Mock Memberships Data
-const MOCK_MEMBERSHIPS: Membership[] = [
-    // Physical Community Members
-    {
-        id: 'm1',
-        user_id: 'u1',
-        tenant_id: '11111111-1111-1111-1111-111111111111', // Sunnyvale Heights
-        role: 'Member',
-        dynamic_data: { unit_number: 'A-101', resident_type: 'Owner' } as PhysicalMemberData,
-        profile: { id: 'u1', email: 'john@example.com', full_name: 'John Doe', avatar_url: 'https://i.pravatar.cc/150?u=u1' },
-    },
-    {
-        id: 'm2',
-        user_id: 'u2',
-        tenant_id: '11111111-1111-1111-1111-111111111111',
-        role: 'Admin',
-        dynamic_data: { unit_number: 'B-205', resident_type: 'Tenant' } as PhysicalMemberData,
-        profile: { id: 'u2', email: 'jane@example.com', full_name: 'Jane Smith', avatar_url: 'https://i.pravatar.cc/150?u=u2' },
-    },
-    // Professional Community Members
-    {
-        id: 'm3',
-        user_id: 'u1', // same user, different community
-        tenant_id: '22222222-2222-2222-2222-222222222222', // Cardio Assoc
-        role: 'Member',
-        dynamic_data: { license_id: 'MD-555', specialization: 'Cardiology' } as ProfessionalMemberData,
-        profile: { id: 'u1', email: 'john@example.com', full_name: 'Dr. John Doe', avatar_url: 'https://i.pravatar.cc/150?u=u1' },
-    },
-    // Virtual Community Members
-    {
-        id: 'm4',
-        user_id: 'u3',
-        tenant_id: '33333333-3333-3333-3333-333333333333', // Global Gamers
-        role: 'Member',
-        dynamic_data: { gamertag: 'xX_Slayer_Xx', reputation_score: 9001 } as VirtualMemberData,
-        profile: { id: 'u3', email: 'gamer@example.com', full_name: 'Gamer One', avatar_url: 'https://i.pravatar.cc/150?u=u3' },
-    },
-];
+import { supabase } from '@/lib/supabase';
+import AddMemberModal from '@/components/AddMemberModal';
 
 export default function MembersPage() {
     const { tenant, availableTenants, switchTenant } = useTenant();
     const [members, setMembers] = useState<Membership[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    useEffect(() => {
-        if (tenant) {
-            // Filter mock data by tenant
-            const tenantMembers = MOCK_MEMBERSHIPS.filter((m) => m.tenant_id === tenant.id);
-            setMembers(tenantMembers);
+    // Memoize fetchMembers to allow it to be used in dependency arrays or callbacks
+    const fetchMembers = useCallback(async () => {
+        if (!tenant) return;
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('memberships')
+                .select(`
+            *,
+            profile:profiles(*)
+        `)
+                .eq('tenant_id', tenant.id);
+
+            if (error) {
+                console.error('Error fetching members:', error);
+            } else {
+                setMembers(data as Membership[]);
+            }
+        } catch (e) {
+            console.error('Unexpected fetch error:', e);
+        } finally {
+            setLoading(false);
         }
     }, [tenant]);
 
-    if (!tenant) return <div>Loading...</div>;
+    useEffect(() => {
+        fetchMembers();
+    }, [fetchMembers]);
+
+    if (!tenant) return <div>No community selected.</div>;
 
     return (
         <div className="p-8">
             {/* Header & Tenant Switcher */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
                         {tenant.name}
@@ -70,24 +56,36 @@ export default function MembersPage() {
                     </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                     {availableTenants.map((t) => (
                         <button
                             key={t.id}
                             onClick={() => switchTenant(t.slug)}
-                            className={`px-4 py-2 rounded-lg text-sm transition-colors ${tenant.id === t.id
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${tenant.id === t.id
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-200'
                                 }`}
                         >
                             {t.name}
                         </button>
                     ))}
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="ml-2 px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-2"
+                    >
+                        + Add Member
+                    </button>
                 </div>
             </div>
 
             {/* Members List */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative min-h-[200px]">
+                {loading && (
+                    <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                )}
+
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -116,9 +114,11 @@ export default function MembersPage() {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {members.length === 0 ? (
+                        {!loading && members.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">No members found in this community context.</td>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                    No members found. <br /> Click "Add Member" to create one.
+                                </td>
                             </tr>
                         ) : (
                             members.map((member) => {
@@ -137,11 +137,11 @@ export default function MembersPage() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0 h-10 w-10">
-                                                    <img className="h-10 w-10 rounded-full" src={member.profile?.avatar_url || ''} alt="" />
+                                                    <img className="h-10 w-10 rounded-full" src={member.profile?.avatar_url || `https://ui-avatars.com/api/?name=${member.profile?.full_name || 'User'}`} alt="" />
                                                 </div>
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">{member.profile?.full_name}</div>
-                                                    <div className="text-sm text-gray-500">{member.profile?.email}</div>
+                                                    <div className="text-sm font-medium text-gray-900">{member.profile?.full_name || 'Unknown'}</div>
+                                                    <div className="text-sm text-gray-500">{member.profile?.email || 'No Email'}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -154,20 +154,20 @@ export default function MembersPage() {
                                         {/* Dynamic Cells */}
                                         {isPhysical && (
                                             <>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{pData.unit_number}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{pData.resident_type}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{pData?.unit_number || '-'}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{pData?.resident_type || '-'}</td>
                                             </>
                                         )}
                                         {isProfessional && (
                                             <>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proData.license_id}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proData.specialization}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proData?.license_id || '-'}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proData?.specialization || '-'}</td>
                                             </>
                                         )}
                                         {isVirtual && (
                                             <>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{vData.gamertag}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{vData.reputation_score}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{vData?.gamertag || '-'}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{vData?.reputation_score || '-'}</td>
                                             </>
                                         )}
                                     </tr>
@@ -177,6 +177,16 @@ export default function MembersPage() {
                     </tbody>
                 </table>
             </div>
+
+            {isAddModalOpen && (
+                <AddMemberModal
+                    tenant={tenant}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onSuccess={() => {
+                        fetchMembers(); // Refresh list
+                    }}
+                />
+            )}
         </div>
     );
 }
