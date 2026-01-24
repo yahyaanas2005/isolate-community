@@ -24,32 +24,17 @@ export default function OnboardingPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user');
 
-            // 1. Create Tenant
-            const { data: tenant, error: tenantError } = await supabase
-                .from('tenants')
-                .insert({
-                    name: communityName,
-                    slug: communitySlug, // simple slugify
-                    created_by: user.id
-                })
-                .select()
-                .single();
+            // 1. Transactional RPC Call (Bypasses Schema Cache & RLS)
+            const { data, error } = await supabase.rpc('create_community', {
+                name_input: communityName,
+                slug_input: communitySlug
+            });
 
-            if (tenantError) throw tenantError;
-
-            // 2. Create Owner Membership
-            const { error: memberError } = await supabase
-                .from('memberships')
-                .insert({
-                    user_id: user.id,
-                    tenant_id: tenant.id,
-                    role: 'Owner'
-                });
-
-            if (memberError) throw memberError;
+            if (error) throw error;
 
             // 3. Redirect
-            router.push(`/dashboard/${tenant.slug}`);
+            // @ts-ignore
+            router.push(`/dashboard/${data.slug}`);
         } catch (e) {
             alert('Error creating community: ' + (e as Error).message);
         } finally {
