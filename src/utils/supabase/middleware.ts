@@ -18,9 +18,15 @@ export async function updateSession(request: NextRequest) {
         keyLength: key?.length
     });
 
+    if (!url || !key) {
+        // Graceful failure - allows public pages to load even if auth is broken
+        console.error("❌ [Middleware] Missing Supabase Keys. Auth will fail.");
+        return response;
+    }
+
     const supabase = createServerClient(
-        url!,
-        key!,
+        url,
+        key,
         {
             cookies: {
                 getAll() {
