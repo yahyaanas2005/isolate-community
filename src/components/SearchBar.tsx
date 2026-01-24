@@ -23,25 +23,27 @@ export default function SearchBar() {
         setIsOpen(true);
 
         try {
-            const supabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            );
-
-            // Call the 'search' Edge Function
-            // Note: This requires the function to be deployed
-            const { data, error } = await supabase.functions.invoke('search', {
-                body: {
+            // Call next.js API route instead of Edge Function
+            const response = await fetch('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     query: term,
-                    community_id: null // Search all (or pass ID if scoped)
-                }
+                    community_id: null
+                })
             });
+
+            const data = await response.json();
 
             if (data?.results) {
                 setResults(data.results);
-            } else if (error) {
-                console.error('Vector search error:', error);
-                // Fallback to simplistic DB search in case function fail/not deployed
+            } else {
+                console.log('No vector results, falling back to db');
+                // Fallback to DB search
+                const supabase = createBrowserClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                );
                 const { data: dbData } = await supabase
                     .from('searchable_content')
                     .select('*')
