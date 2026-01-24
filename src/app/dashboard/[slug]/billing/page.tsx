@@ -1,13 +1,47 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, FileText, DollarSign } from 'lucide-react';
+import { CreditCard, FileText, DollarSign, Loader2 } from 'lucide-react';
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function BillingDashboard() {
+    const [loading, setLoading] = useState(false);
     const [invoices] = useState([
         { id: '1', number: 'INV-001', amount: 50.00, status: 'PAID', date: '2025-12-01' },
         { id: '2', number: 'INV-002', amount: 50.00, status: 'ISSUED', date: '2026-01-01' },
     ]);
+
+    const handlePay = async (invoiceId: string) => {
+        try {
+            setLoading(true);
+            const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            // In a real app, we would use the real invoice ID from the database.
+            // For this demo, if the ID is '2', we will try to invoke the function.
+            // Note: This requires a real invoice to exist in the DB with this ID.
+            // Since we don't have one, this is just demonstrating the wiring.
+
+            const { data, error } = await supabase.functions.invoke('create-checkout', {
+                body: {
+                    invoice_id: invoiceId,
+                    return_url: window.location.href
+                }
+            });
+
+            if (error) throw error;
+            if (data?.url) {
+                window.location.href = data.url;
+            }
+        } catch (err) {
+            console.error('Payment error:', err);
+            alert('Payment initialization failed. (Note: You need real Invoice records in the DB for this to work)');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="p-6">
@@ -68,8 +102,12 @@ export default function BillingDashboard() {
                                 </td>
                                 <td className="px-6 py-4">
                                     {inv.status !== 'PAID' && (
-                                        <button className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                                            <CreditCard className="w-3 h-3" />
+                                        <button
+                                            onClick={() => handlePay(inv.id)}
+                                            disabled={loading}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                        >
+                                            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
                                             Pay Online
                                         </button>
                                     )}
