@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 
 export default function DashboardRootPage() {
     const router = useRouter();
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
