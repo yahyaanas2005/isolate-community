@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import LanguageSelector from './LanguageSelector';
+import UserNav from './UserNav';
 
 interface SidebarProps {
     slug: string;
@@ -64,10 +65,11 @@ export function Sidebar({ slug }: SidebarProps) {
                     );
                 })}
             </nav>
-            <div className="p-4 border-t bg-gray-50 space-y-2">
-                <LanguageSelector />
-                <div className="text-xs text-center text-gray-500">
-                    v1.2 Major Release
+            <div className="border-t border-gray-200">
+                <UserNav slug={slug} />
+                <div className="px-4 pb-4 flex justify-between items-center text-xs text-gray-400">
+                    <LanguageSelector />
+                    <span>v1.3</span>
                 </div>
             </div>
         </div>
