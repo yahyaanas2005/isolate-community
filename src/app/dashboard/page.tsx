@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Plus, Building2, Briefcase, Gamepad2, ArrowRight, LayoutGrid } from 'lucide-react';
 import { JoinCommunityModal } from '@/components/JoinCommunityModal';
 import { useState } from 'react';
+import NotificationBell from '@/components/NotificationBell';
+import SearchBar from '@/components/SearchBar';
 
 export default function DashboardPage() {
     const { availableTenants, switchTenant } = useTenant();
@@ -35,7 +37,11 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-bold tracking-tight mb-2">My Communities</h1>
                     <p className="text-white/50">Select a workspace to manage or collaborate.</p>
                 </div>
-                {/* Global Profile Menu could go here */}
+                <div className="flex items-center gap-4">
+                    <SearchBar />
+                    <NotificationBell />
+                    {/* Global Profile Menu could go here */}
+                </div>
             </header>
 
             <main className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,27 +1,18 @@
 const { Client } = require('pg');
-const dns = require('dns');
-const util = require('util');
 
-const resolve4 = util.promisify(dns.resolve4);
-const hostname = 'db.lyzbhvfjagpjquoufbhh.supabase.co';
+const hostname = 'lyzbhvfjagpjquoufbhh.supabase.co'; // Resolves
+const dbHostname = 'db.lyzbhvfjagpjquoufbhh.supabase.co'; // For SNI
 const password = 'Y3cmEjFh6CbXZRik';
 
 async function run() {
     try {
-        console.log(`Resolving ${hostname}...`);
-        const addresses = await resolve4(hostname).catch(e => {
-            console.error('DNS Resolution failed:', e.message);
-            return ['172.64.149.24']; // Fallback to known Cloudflare IP
-        });
-
-        const ip = addresses[0];
-        console.log(`Resolved to: ${ip}`);
+        console.log(`Connecting to ${hostname} (SNI: ${dbHostname})...`);
 
         const client = new Client({
-            connectionString: `postgres://postgres:${password}@${ip}:5432/postgres`,
+            connectionString: `postgres://postgres:${password}@${hostname}:6543/postgres`,
             ssl: {
                 rejectUnauthorized: false,
-                servername: hostname // SNI Required for Direct Connection
+                servername: dbHostname // Force correct SNI for DB
             },
             connectionTimeoutMillis: 10000 // 10s timeout
         });
