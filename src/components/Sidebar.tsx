@@ -17,7 +17,8 @@ import {
     Trophy,
     Zap,
     ShoppingBag,
-    MessageCircle
+    MessageCircle,
+    Briefcase
 } from 'lucide-react';
 
 import LanguageSelector from './LanguageSelector';
@@ -36,7 +37,8 @@ export function Sidebar({ slug }: SidebarProps) {
         { name: 'Notifications', href: `${baseUrl}/notifications`, icon: Bell },
         { name: 'Events', href: `${baseUrl}/events`, icon: Calendar },
         { name: 'Marketplace', href: `${baseUrl}/marketplace`, icon: ShoppingBag }, // Feature 1
-        { name: 'Messages', href: `${baseUrl}/messages`, icon: MessageCircle },   // Feature 1
+        { name: 'Jobs', href: `${baseUrl}/jobs`, icon: Briefcase },                 // Feature 2
+        { name: 'Messages', href: `${baseUrl}/messages`, icon: MessageCircle },     // Feature 1
         { name: 'Forms', href: `${baseUrl}/forms`, icon: FileText },
         { name: 'Polls', href: `${baseUrl}/polls`, icon: BarChart },
         { name: 'Billing', href: `${baseUrl}/billing/dashboard`, icon: CreditCard },
