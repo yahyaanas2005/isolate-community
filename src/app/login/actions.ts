@@ -12,48 +12,66 @@ export async function handleAuth(formData: FormData) {
         password: formData.get('password') as string,
     }
 
-    // 1. Attempt Sign In
-    const { error: signInError } = await supabase.auth.signInWithPassword(data)
+    // Validate input
+    if (!data.email || !data.password) {
+        redirect('/login?error=Email and password are required')
+    }
 
-    if (!signInError) {
-        // Success: Existing user logged in
+    // 1. First, try to SIGN IN (Login)
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(data)
+
+    if (!signInError && signInData.user) {
+        console.log('Sign in successful:', signInData.user.email)
         revalidatePath('/', 'layout')
         redirect('/dashboard')
     }
 
-    // 2. If Sign In failed, check if it's because user doesn't exist?
-    // Supabase returns "Invalid login credentials" for both "Wrong Password" and "User Not Found".
-    // So we simply attempt Sign Up as the fallback.
+    // 2. If Sign In failed, try Sign Up (new user)
+    console.log('Sign in failed, attempting sign up...')
 
-    // Note: If user exists but typed WRONG password, SignUp will fail with "User already registered".
-    // This correctly prevents hijacking an account by just trying to "Sign Up" with it.
-
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         ...data,
         options: {
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://isolate-community-rcmg.vercel.app'}/dashboard`,
             data: {
-                // Optional: Capture name if we added it to form, currently defaulting to empty
-                full_name: '',
+                full_name: data.email.split('@')[0],
             }
         }
     })
 
     if (signUpError) {
-        // If both failed, it means:
-        // A) User exists + Wrong Password (signIn failed, then signUp says 'already registered')
-        // B) Some other error (network, rate limit)
-
-        // We redirect with a generic error, or try to be specific if we parse the message.
-        console.error('Auth Attempt Failed:', { signInError: signInError.message, signUpError: signUpError.message })
-
-        if (signUpError.message.includes('already registered')) {
-            redirect('/login?error=Account exists. Please check your password.')
+        // User already exists with wrong password
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('User already registered')) {
+            redirect('/login?error=Incorrect password. Please try again.')
         }
 
-        redirect('/login?error=Authentication failed. Please try again.')
+        // Other errors
+        console.error('Auth Error:', signUpError.message)
+        redirect(`/login?error=${encodeURIComponent(signUpError.message)}`)
     }
 
-    // Success: New user created and logged in (assuming 'Confirm Email' is disabled in Supabase)
+    // Sign up successful
+    if (signUpData.user) {
+        console.log('Sign up successful:', signUpData.user.email)
+
+        // Check if email confirmation is required
+        if (signUpData.session) {
+            // User is automatically logged in (email confirmation disabled)
+            revalidatePath('/', 'layout')
+            redirect('/dashboard')
+        } else {
+            // Email confirmation required
+            redirect('/login?message=Please check your email to confirm your account')
+        }
+    }
+
+    // Fallback
+    redirect('/login?error=Authentication failed. Please try again.')
+}
+
+export async function signOut() {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    redirect('/')
 }

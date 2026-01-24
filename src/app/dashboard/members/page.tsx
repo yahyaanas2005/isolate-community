@@ -3,10 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/components/TenantContext';
 import { Membership, PhysicalMemberData, ProfessionalMemberData, VirtualMemberData } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import AddMemberModal from '@/components/AddMemberModal';
 
+export const dynamic = 'force-dynamic';
+
 export default function MembersPage() {
+    const supabase = createClient();
     const { tenant, availableTenants, switchTenant } = useTenant();
     const [members, setMembers] = useState<Membership[]>([]);
     const [loading, setLoading] = useState(false);
@@ -62,8 +65,8 @@ export default function MembersPage() {
                             key={t.id}
                             onClick={() => switchTenant(t.slug)}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${tenant.id === t.id
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-200'
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-200'
                                 }`}
                         >
                             {t.name}

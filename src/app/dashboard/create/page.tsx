@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
@@ -15,63 +17,43 @@ export default function CreateCommunityPage() {
     // Form Data
     const [type, setType] = useState<'Physical' | 'Professional' | 'Virtual'>('Physical');
     const [name, setName] = useState('');
-    const [slug, setSlug] = useState('');
+    const [description, setDescription] = useState('');
+    const [isPublic, setIsPublic] = useState(false);
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
 
         try {
-            // 1. Get Current User
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                // Should redirect to login ideally
-                return;
-            }
-
-            // 2. Insert into Tenants
-            const { data: tenant, error: tError } = await supabase
-                .from('tenants')
-                .insert({
+            const response = await fetch('/api/communities/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     name,
-                    slug,
-                    type
+                    type,
+                    description,
+                    is_public: isPublic
                 })
-                .select()
-                .single();
+            });
 
-            if (tError) {
-                alert('Error creating community: ' + tError.message);
-                console.error(tError);
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.error || 'Failed to create community');
                 setLoading(false);
                 return;
             }
 
-            // 3. Insert into Memberships (as Owner)
-            // Note: Our RLS implementation for Tenants might block this if not carefully set.
-            // Assumption: Authenticated users can insert to 'tenants'.
-            // Assumption: Profiles already exists for user (via trigger or signup).
-
-            const { error: mError } = await supabase
-                .from('memberships')
-                .insert({
-                    user_id: user.id,
-                    tenant_id: tenant.id,
-                    role: 'Owner',
-                    dynamic_data: { note: 'Creator' }
-                });
-
-            if (mError) {
-                console.error('Error adding owner membership:', mError);
-                // But we proceed because tenant is made
-            }
-
-            // 4. Redirect
-            router.push(`/dashboard/members`); // Ideally navigate to new tenant slug
+            // Success! Redirect to the new community
+            const community = data.community;
+            router.push(`/dashboard/${community.slug}`);
             router.refresh();
 
         } catch (err) {
             console.error(err);
+            setError('An unexpected error occurred');
         } finally {
             setLoading(false);
         }
@@ -128,34 +110,46 @@ export default function CreateCommunityPage() {
 
                     {/* Step 2: Details */}
                     <div className={`space-y-6 transition-opacity duration-300 ${step === 2 ? 'opacity-100' : 'hidden opacity-0'}`}>
+                        {error && (
+                            <div className="bg-red-500/20 border border-red-500/50 rounded-xl px-4 py-3 text-red-200 text-sm">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="grid gap-6 max-w-lg">
                             <div>
                                 <label className="block text-sm font-medium text-white/70 mb-2">Community Name</label>
                                 <input
                                     required
                                     value={name}
-                                    onChange={(e) => {
-                                        setName(e.target.value);
-                                        setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
-                                    }}
+                                    onChange={(e) => setName(e.target.value)}
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
                                     placeholder="e.g. Sunset Apartments"
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-white/70 mb-2">URL Slug</label>
-                                <div className="flex items-center">
-                                    <span className="bg-white/5 border border-r-0 border-white/10 rounded-l-xl px-4 py-3 text-white/40 select-none">
-                                        isolate.com/
-                                    </span>
-                                    <input
-                                        required
-                                        value={slug}
-                                        onChange={(e) => setSlug(e.target.value)}
-                                        className="flex-1 bg-white/5 border border-white/10 rounded-r-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
-                                        placeholder="sunset-apartments"
-                                    />
-                                </div>
+                                <label className="block text-sm font-medium text-white/70 mb-2">Description (Optional)</label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    rows={3}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                                    placeholder="Briefly describe your community..."
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="is_public"
+                                    checked={isPublic}
+                                    onChange={(e) => setIsPublic(e.target.checked)}
+                                    className="w-5 h-5 rounded bg-white/5 border-white/20 text-purple-500 focus:ring-purple-500"
+                                />
+                                <label htmlFor="is_public" className="text-sm text-white/70 cursor-pointer">
+                                    Make this community public (anyone can join without invite code)
+                                </label>
                             </div>
                         </div>
 
