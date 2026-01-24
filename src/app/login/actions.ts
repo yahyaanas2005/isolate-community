@@ -50,7 +50,8 @@ export async function handleAuth(formData: FormData) {
             redirect('/login?error=Account exists. Please check your password.')
         }
 
-        redirect('/login?error=Authentication failed. Please try again.')
+        // Pass the actual error message for debugging
+        redirect(`/login?error=${encodeURIComponent(signUpError.message)}`)
     }
 
     // Success: New user created and logged in (assuming 'Confirm Email' is disabled in Supabase)
