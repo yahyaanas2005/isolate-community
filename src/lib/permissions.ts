@@ -164,3 +164,106 @@ export function getStatusBadgeColor(status: 'active' | 'inactive' | 'suspended')
             return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
     }
 }
+
+// =========================================
+// SERVICE DESK PERMISSIONS
+// =========================================
+
+/**
+ * Check if user can create service requests
+ */
+export function canCreateServiceRequest(role: UserRole): boolean {
+    return true; // All active members can create service requests
+}
+
+/**
+ * Check if user can assign service requests
+ */
+export function canAssignServiceRequests(role: UserRole): boolean {
+    return hasMinimumRole(role, 'Staff');
+}
+
+/**
+ * Check if user can view internal notes
+ */
+export function canViewInternalNotes(role: UserRole): boolean {
+    return hasMinimumRole(role, 'Staff');
+}
+
+/**
+ * Check if user can manage service categories
+ */
+export function canManageServiceCategories(role: UserRole): boolean {
+    return hasMinimumRole(role, 'Admin');
+}
+
+// =========================================
+// MARKETPLACE PERMISSIONS
+// =========================================
+
+/**
+ * Check if user can create marketplace listings
+ */
+export function canCreateListing(role: UserRole): boolean {
+    return true; // All active members can create listings
+}
+
+/**
+ * Check if user can edit a listing
+ * @param role - User's role in the community
+ * @param isSeller - Whether user is the listing seller
+ */
+export function canEditListing(role: UserRole, isSeller: boolean): boolean {
+    return isSeller || hasMinimumRole(role, 'Admin');
+}
+
+/**
+ * Check if user can hide/moderate listings
+ */
+export function canModerateListings(role: UserRole): boolean {
+    return hasMinimumRole(role, 'Sub-Admin');
+}
+
+/**
+ * Check if user can make offers on listings
+ */
+export function canMakeOffer(role: UserRole): boolean {
+    return true; // All active members can make offers
+}
+
+// =========================================
+// JOB BOARD PERMISSIONS
+// =========================================
+
+/**
+ * Check if user can post jobs
+ */
+export function canPostJob(role: UserRole): boolean {
+    return true; // All active members can post jobs
+}
+
+/**
+ * Check if user can edit a job post
+ * @param role - User's role in the community
+ * @param isPoster - Whether user posted the job
+ */
+export function canEditJobPost(role: UserRole, isPoster: boolean): boolean {
+    return isPoster || hasMinimumRole(role, 'Admin');
+}
+
+/**
+ * Check if user can apply to jobs
+ */
+export function canApplyToJob(role: UserRole): boolean {
+    return true; // All active members can apply
+}
+
+/**
+ * Check if user can view job applications
+ * @param role - User's role in the community
+ * @param isPoster - Whether user posted the job
+ * @param isApplicant - Whether user is the applicant
+ */
+export function canViewApplications(role: UserRole, isPoster: boolean, isApplicant: boolean): boolean {
+    return isPoster || isApplicant || hasMinimumRole(role, 'Admin');
+}
