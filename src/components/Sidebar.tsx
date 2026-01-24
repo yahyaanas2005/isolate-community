@@ -13,7 +13,9 @@ import {
     Map,
     TrendingUp,
     Settings,
-    Home
+    Home,
+    Trophy,
+    Zap
 } from 'lucide-react';
 
 import LanguageSelector from './LanguageSelector';
@@ -35,6 +37,8 @@ export function Sidebar({ slug }: SidebarProps) {
         { name: 'Polls', href: `${baseUrl}/polls`, icon: BarChart },
         { name: 'Billing', href: `${baseUrl}/billing/dashboard`, icon: CreditCard },
         { name: 'Analytics', href: `${baseUrl}/analytics`, icon: TrendingUp },
+        { name: 'Reputation', href: `${baseUrl}/reputation`, icon: Trophy }, // Feature 24
+        { name: 'Automation', href: `${baseUrl}/automation`, icon: Zap },   // Feature 23
         { name: 'Roadmap', href: `${baseUrl}/roadmap`, icon: Map },
         { name: 'Settings', href: `${baseUrl}/integrations`, icon: Settings },
     ];
@@ -67,9 +71,14 @@ export function Sidebar({ slug }: SidebarProps) {
             </nav>
             <div className="border-t border-gray-200">
                 <UserNav slug={slug} />
-                <div className="px-4 pb-4 flex justify-between items-center text-xs text-gray-400">
+                <div className="px-4 pb-2 flex justify-between items-center text-xs text-slate-500">
                     <LanguageSelector />
-                    <span>v1.3</span>
+                    <span>v2.0</span>
+                </div>
+                <div className="px-4 pb-4 flex gap-3 text-[10px] text-slate-400">
+                    <Link href="/docs" className="hover:text-blue-600 hover:underline">Help & Docs</Link>
+                    <span>•</span>
+                    <Link href="/developer" className="hover:text-blue-600 hover:underline">API & Devs</Link>
                 </div>
             </div>
         </div>
