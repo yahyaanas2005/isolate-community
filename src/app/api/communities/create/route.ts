@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 /**
@@ -18,6 +19,18 @@ export async function POST(request: Request) {
                 { status: 401 }
             );
         }
+
+        // Initialize Admin Client to bypass RLS for creation
+        const adminClient = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        );
 
         // Parse request body
         const body = await request.json();
@@ -44,8 +57,8 @@ export async function POST(request: Request) {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
 
-        // Check if slug already exists
-        const { data: existingTenant } = await supabase
+        // Check if slug already exists (using admin client)
+        const { data: existingTenant } = await adminClient
             .from('tenants')
             .select('id')
             .eq('slug', slug)
@@ -56,7 +69,7 @@ export async function POST(request: Request) {
             const randomSuffix = Math.random().toString(36).substring(2, 6);
             const uniqueSlug = `${slug}-${randomSuffix}`;
 
-            return createCommunity(supabase, user.id, {
+            return createCommunity(adminClient, user.id, {
                 name,
                 slug: uniqueSlug,
                 type,
@@ -65,7 +78,7 @@ export async function POST(request: Request) {
             });
         }
 
-        return createCommunity(supabase, user.id, {
+        return createCommunity(adminClient, user.id, {
             name,
             slug,
             type,
@@ -73,20 +86,20 @@ export async function POST(request: Request) {
             is_public
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating community:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: error?.message || 'Internal server error' },
             { status: 500 }
         );
     }
 }
 
 /**
- * Helper function to create community and membership in a transaction
+ * Helper function to create community and membership using Admin Client
  */
 async function createCommunity(
-    supabase: any,
+    supabaseAdmin: any,
     userId: string,
     data: {
         name: string;
@@ -100,7 +113,7 @@ async function createCommunity(
     const inviteCode = generateInviteCode();
 
     // Create tenant
-    const { data: tenant, error: tenantError } = await supabase
+    const { data: tenant, error: tenantError } = await supabaseAdmin
         .from('tenants')
         .insert({
             name: data.name,
@@ -126,13 +139,13 @@ async function createCommunity(
         }
 
         return NextResponse.json(
-            { error: 'Failed to create community' },
+            { error: 'Failed to create community: ' + tenantError.message },
             { status: 500 }
         );
     }
 
     // Create membership with Owner role
-    const { error: membershipError } = await supabase
+    const { error: membershipError } = await supabaseAdmin
         .from('memberships')
         .insert({
             user_id: userId,
@@ -146,7 +159,7 @@ async function createCommunity(
         console.error('Error creating membership:', membershipError);
 
         // Rollback: delete the tenant
-        await supabase.from('tenants').delete().eq('id', tenant.id);
+        await supabaseAdmin.from('tenants').delete().eq('id', tenant.id);
 
         return NextResponse.json(
             { error: 'Failed to create membership' },
