@@ -8,9 +8,19 @@ export async function updateSession(request: NextRequest) {
         },
     });
 
+    // Debugging Vercel Env Vars
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    console.log('[Middleware] Supabase Config Check:', {
+        hasUrl: !!url,
+        urlLength: url?.length,
+        hasKey: !!key,
+        keyLength: key?.length
+    });
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url!,
+        key!,
         {
             cookies: {
                 getAll() {
