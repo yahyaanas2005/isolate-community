@@ -1,5 +1,7 @@
 import { TenantProvider } from '@/components/TenantContext';
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardLayout({
     children,
 }: {

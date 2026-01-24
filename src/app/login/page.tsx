@@ -2,7 +2,11 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { handleAuth } from "./actions";
 
-export default function LoginPage() {
+export default function LoginPage({
+    searchParams,
+}: {
+    searchParams: { error?: string; message?: string }
+}) {
     return (
         <div className="min-h-screen grid lg:grid-cols-2 text-white">
             {/* Left: Branding */}
@@ -33,6 +37,24 @@ export default function LoginPage() {
                             Enter your email to continue.
                         </p>
                     </div>
+
+                    {/* Error Message */}
+                    {searchParams.error && (
+                        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4">
+                            <p className="text-sm text-red-400">
+                                {searchParams.error}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Success Message */}
+                    {searchParams.message && (
+                        <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+                            <p className="text-sm text-green-400">
+                                {searchParams.message}
+                            </p>
+                        </div>
+                    )}
 
                     <form className="space-y-6">
                         <div>
