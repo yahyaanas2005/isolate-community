@@ -16,6 +16,8 @@ import {
     Home
 } from 'lucide-react';
 
+import LanguageSelector from './LanguageSelector';
+
 interface SidebarProps {
     slug: string;
 }
@@ -23,7 +25,6 @@ interface SidebarProps {
 export function Sidebar({ slug }: SidebarProps) {
     const pathname = usePathname();
     const baseUrl = `/dashboard/${slug}`;
-
     const navItems = [
         { name: 'Overview', href: baseUrl, icon: Home },
         { name: 'Security & Gate', href: `${baseUrl}/security/guard`, icon: Shield },
@@ -53,8 +54,8 @@ export function Sidebar({ slug }: SidebarProps) {
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-                                    ? 'bg-blue-50 text-blue-700'
-                                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                 }`}
                         >
                             <item.icon className={`w-4 h-4 ${isActive ? 'text-blue-500' : 'text-gray-400'}`} />
@@ -63,7 +64,8 @@ export function Sidebar({ slug }: SidebarProps) {
                     );
                 })}
             </nav>
-            <div className="p-4 border-t bg-gray-50">
+            <div className="p-4 border-t bg-gray-50 space-y-2">
+                <LanguageSelector />
                 <div className="text-xs text-center text-gray-500">
                     v1.2 Major Release
                 </div>

@@ -2,18 +2,15 @@
 
 import { useState } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { createClient } from '@/utils/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 import { SearchResult } from '@/lib/types';
-import { useRouter } from 'next/navigation';
 
 export default function SearchBar() {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const supabase = createClient();
-    const router = useRouter();
 
     const handleSearch = async (term: string) => {
         setQuery(term);
@@ -26,17 +23,31 @@ export default function SearchBar() {
         setIsOpen(true);
 
         try {
-            // In MVP, we use simple text matching or FTS if supported in PostgREST
-            // Real AI search would use an Edge Function to embed 'term' and query vector column
-            // Here we simulate it by querying the searchable_content table with ilike
-            const { data, error } = await supabase
-                .from('searchable_content')
-                .select('*')
-                .ilike('title', `%${term}%`)
-                .limit(5);
+            const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
 
-            if (data) {
-                setResults(data as SearchResult[]);
+            // Call the 'search' Edge Function
+            // Note: This requires the function to be deployed
+            const { data, error } = await supabase.functions.invoke('search', {
+                body: {
+                    query: term,
+                    community_id: null // Search all (or pass ID if scoped)
+                }
+            });
+
+            if (data?.results) {
+                setResults(data.results);
+            } else if (error) {
+                console.error('Vector search error:', error);
+                // Fallback to simplistic DB search in case function fail/not deployed
+                const { data: dbData } = await supabase
+                    .from('searchable_content')
+                    .select('*')
+                    .ilike('title', `%${term}%`)
+                    .limit(5);
+                if (dbData) setResults(dbData as any);
             }
         } catch (error) {
             console.error('Search error:', error);
@@ -54,7 +65,7 @@ export default function SearchBar() {
                 <input
                     type="text"
                     className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-full leading-5 bg-white/5 text-gray-300 placeholder-gray-400 focus:outline-none focus:bg-white/10 focus:border-white/30 sm:text-sm transition-colors"
-                    placeholder="Search..."
+                    placeholder="Ask AI Search..."
                     value={query}
                     onChange={(e) => handleSearch(e.target.value)}
                     onFocus={() => setIsOpen(true)}
@@ -69,6 +80,9 @@ export default function SearchBar() {
 
             {isOpen && results.length > 0 && (
                 <div className="absolute mt-1 w-full bg-[#1a1a1a] border border-white/10 rounded-xl shadow-lg overflow-hidden z-50">
+                    <div className="px-3 py-2 text-xs text-gray-500 uppercase font-semibold bg-white/5">
+                        AI Recommended
+                    </div>
                     <ul>
                         {results.map((result) => (
                             <li key={result.id}>
@@ -79,8 +93,17 @@ export default function SearchBar() {
                                 >
                                     <div className="text-sm font-medium text-white">{result.title}</div>
                                     <div className="text-xs text-gray-500 truncate">{result.body_excerpt}</div>
-                                    <div className="mt-1 text-[10px] uppercase tracking-wider text-blue-400 font-semibold border border-blue-400/20 inline-block px-1 rounded">
-                                        {result.content_type}
+                                    <div className="mt-1 flex items-center justify-between">
+                                        <div className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold border border-blue-400/20 inline-block px-1 rounded">
+                                            {result.content_type}
+                                        </div>
+                                        {/* Show relevancy score if available */}
+                                        {/* @ts-ignore */}
+                                        {result.similarity && (
+                                            <span className="text-[10px] text-green-500">
+                                                {Math.round(result.similarity * 100)}% Match
+                                            </span>
+                                        )}
                                     </div>
                                 </Link>
                             </li>
