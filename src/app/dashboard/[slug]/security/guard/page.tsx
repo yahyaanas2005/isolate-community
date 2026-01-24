@@ -1,3 +1,6 @@
+import Link from 'next/link';
+import { Navigation, Car } from 'lucide-react';
+
 export default function GuardPortalPage({ params }: { params: { slug: string } }) {
     return (
         <div className="space-y-6">
@@ -7,9 +10,15 @@ export default function GuardPortalPage({ params }: { params: { slug: string } }
                     <p className="text-muted-foreground">Manage entry and exit for {params.slug}.</p>
                 </div>
                 <div className="flex gap-2">
-                    <button className="bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 rounded-md">
-                        Emergency Alert
+                    <button className="bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 rounded-md font-bold animate-pulse">
+                        SOS
                     </button>
+                    <Link href={`/dashboard/${params.slug}/security/patrol`} className="bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 rounded-md flex items-center gap-2">
+                        <Navigation className="w-4 h-4" /> Patrol
+                    </Link>
+                    <Link href={`/dashboard/${params.slug}/security/parking`} className="bg-white border border-gray-300 hover:bg-gray-50 h-10 px-4 py-2 rounded-md flex items-center gap-2">
+                        <Car className="w-4 h-4" /> Parking
+                    </Link>
                     <button className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md">
                         + Log Entry
                     </button>
