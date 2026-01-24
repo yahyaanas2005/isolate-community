@@ -12,46 +12,61 @@ export async function handleAuth(formData: FormData) {
         password: formData.get('password') as string,
     }
 
-    // 1. First, try to SIGN IN (Login)
-    // This covers: Existing User + Correct Password
-    const { error: signInError } = await supabase.auth.signInWithPassword(data)
+    // Validate input
+    if (!data.email || !data.password) {
+        redirect('/login?error=Email and password are required')
+    }
 
-    if (!signInError) {
+    // 1. First, try to SIGN IN (Login)
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(data)
+
+    if (!signInError && signInData.user) {
+        console.log('Sign in successful:', signInData.user.email)
         revalidatePath('/', 'layout')
         redirect('/dashboard')
     }
 
-    // 2. If Sign In failed, it could be:
-    //    a) Wrong Password (for existing user)
-    //    b) User does not exist at all
-    //    c) System error
+    // 2. If Sign In failed, try Sign Up (new user)
+    console.log('Sign in failed, attempting sign up...')
 
-    // We attempt SIGN UP to handle case (b).
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         ...data,
         options: {
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://isolate-community-rcmg.vercel.app'}/dashboard`,
             data: {
-                full_name: '',
+                full_name: data.email.split('@')[0],
             }
         }
     })
 
     if (signUpError) {
-        // 3. Analyze Sign Up Failure
-        // If it says "User already registered", it confirms Case (a): User Exists + Wrong Password.
-        if (signUpError.message.includes('already registered')) {
-            redirect('/login?error=Account exists. Please enter the correct password.')
+        // User already exists with wrong password
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('User already registered')) {
+            redirect('/login?error=Incorrect password. Please try again.')
         }
 
-        // Other errors (e.g. Rate limit, weak password)
+        // Other errors
         console.error('Auth Error:', signUpError.message)
         redirect(`/login?error=${encodeURIComponent(signUpError.message)}`)
     }
 
-    // 4. Success Case (c): New User Created
-    // If 'Confirm Email' is disabled, they are now logged in.
-    revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    // Sign up successful
+    if (signUpData.user) {
+        console.log('Sign up successful:', signUpData.user.email)
+
+        // Check if email confirmation is required
+        if (signUpData.session) {
+            // User is automatically logged in (email confirmation disabled)
+            revalidatePath('/', 'layout')
+            redirect('/dashboard')
+        } else {
+            // Email confirmation required
+            redirect('/login?message=Please check your email to confirm your account')
+        }
+    }
+
+    // Fallback
+    redirect('/login?error=Authentication failed. Please try again.')
 }
 
 export async function signOut() {
