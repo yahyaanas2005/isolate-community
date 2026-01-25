@@ -1,30 +1,54 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { Building, Users, ArrowRight } from 'lucide-react';
+import { Building2, Users, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function OnboardingPage() {
     const router = useRouter();
     const supabase = createClient();
+    const [loading, setLoading] = useState(true);
+    const [existingCommunities, setExistingCommunities] = useState<any[]>([]);
     const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
-    const [loading, setLoading] = useState(false);
-
-    // Create Form State
     const [communityName, setCommunityName] = useState('');
     const [communitySlug, setCommunitySlug] = useState('');
+    const [inviteCode, setInviteCode] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-    // Join Form State
-    const [searchQuery, setSearchQuery] = useState('');
+    useEffect(() => {
+        checkExistingMemberships();
+    }, []);
+
+    async function checkExistingMemberships() {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                router.push('/login');
+                return;
+            }
+
+            const { data: memberships } = await supabase
+                .from('memberships')
+                .select('tenant_id, role, tenants(id, name, slug)')
+                .eq('user_id', user.id);
+
+            if (memberships && memberships.length > 0) {
+                setExistingCommunities(memberships);
+            }
+        } catch (error) {
+            console.error('Error checking memberships:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     async function handleCreate() {
-        setLoading(true);
+        setSubmitting(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user');
 
-            // 1. Create Tenant (without created_by to avoid schema error)
             const { data: tenant, error: tenantError } = await supabase
                 .from('tenants')
                 .insert({
@@ -36,7 +60,6 @@ export default function OnboardingPage() {
 
             if (tenantError) throw tenantError;
 
-            // 2. Create Owner Membership
             const { error: membershipError } = await supabase
                 .from('memberships')
                 .insert({
@@ -47,24 +70,14 @@ export default function OnboardingPage() {
 
             if (membershipError) throw membershipError;
 
-            // 3. Redirect
             router.push(`/dashboard/${tenant.slug}`);
         } catch (e) {
             alert('Error creating community: ' + (e as Error).message);
         } finally {
-            setLoading(false);
-        }
-    }
+            <p className="text-gray-500 mt-2">Let's get you settled in.</p>
+                </div >
 
-    return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Welcome to Isolate</h1>
-                    <p className="text-gray-500 mt-2">Let's get you settled in.</p>
-                </div>
-
-                {mode === 'select' && (
+                { mode === 'select' && (
                     <div className="space-y-4">
                         <button
                             onClick={() => setMode('create')}
@@ -98,54 +111,59 @@ export default function OnboardingPage() {
                             </div>
                         </button>
                     </div>
-                )}
+                )
+        }
 
-                {mode === 'create' && (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Community Name</label>
+        {
+            mode === 'create' && (
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Community Name</label>
+                        <input
+                            value={communityName}
+                            onChange={(e) => {
+                                setCommunityName(e.target.value);
+                                setCommunitySlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+                            }}
+                            className="w-full p-3 border rounded-lg bg-gray-50 focus:bg-white transition-colors"
+                            placeholder="e.g. Sunset Villas"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">URL Slug</label>
+                        <div className="flex items-center gap-1 text-gray-400 bg-gray-50 p-3 rounded-lg border">
+                            <span className="text-xs">isolate.com/</span>
                             <input
-                                value={communityName}
-                                onChange={(e) => {
-                                    setCommunityName(e.target.value);
-                                    setCommunitySlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
-                                }}
-                                className="w-full p-3 border rounded-lg bg-gray-50 focus:bg-white transition-colors"
-                                placeholder="e.g. Sunset Villas"
+                                value={communitySlug}
+                                onChange={(e) => setCommunitySlug(e.target.value)}
+                                className="bg-transparent flex-1 text-gray-900 outline-none font-mono text-sm"
+                                placeholder="sunset-villas"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">URL Slug</label>
-                            <div className="flex items-center gap-1 text-gray-400 bg-gray-50 p-3 rounded-lg border">
-                                <span className="text-xs">isolate.com/</span>
-                                <input
-                                    value={communitySlug}
-                                    onChange={(e) => setCommunitySlug(e.target.value)}
-                                    className="bg-transparent flex-1 text-gray-900 outline-none font-mono text-sm"
-                                    placeholder="sunset-villas"
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={handleCreate}
-                            disabled={loading || !communityName || !communitySlug}
-                            className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {loading ? 'Creating...' : 'Create & Continue'}
-                        </button>
-                        <button onClick={() => setMode('select')} className="w-full text-center text-sm text-gray-500 py-2 hover:text-gray-900">Back</button>
                     </div>
-                )}
 
-                {mode === 'join' && (
-                    <div className="text-center py-8">
-                        <p className="text-gray-500 mb-6">Ask your community manager for an invite link. Public search coming soon.</p>
-                        <button onClick={() => setMode('select')} className="text-blue-600 font-medium hover:underline">Go Back</button>
-                    </div>
-                )}
+                    <button
+                        onClick={handleCreate}
+                        disabled={loading || !communityName || !communitySlug}
+                        className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {loading ? 'Creating...' : 'Create & Continue'}
+                    </button>
+                    <button onClick={() => setMode('select')} className="w-full text-center text-sm text-gray-500 py-2 hover:text-gray-900">Back</button>
+                </div>
+            )
+        }
 
-            </div>
-        </div>
+        {
+            mode === 'join' && (
+                <div className="text-center py-8">
+                    <p className="text-gray-500 mb-6">Ask your community manager for an invite link. Public search coming soon.</p>
+                    <button onClick={() => setMode('select')} className="text-blue-600 font-medium hover:underline">Go Back</button>
+                </div>
+            )
+        }
+
+            </div >
+        </div >
     );
-}
+    }
