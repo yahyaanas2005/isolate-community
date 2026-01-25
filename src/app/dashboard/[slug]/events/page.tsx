@@ -1,6 +1,7 @@
 import { getEvents } from '@/actions/events';
 import EventCard from '@/components/events/EventCard';
-import { Calendar, Plus } from 'lucide-react';
+import CreateEventDialog from '@/components/events/CreateEventDialog';
+import { Calendar } from 'lucide-react';
 
 interface EventsPageProps {
     params: Promise<{ slug: string }>;
@@ -20,10 +21,7 @@ export default async function EventsPage({ params }: EventsPageProps) {
                     </h1>
                     <p className="text-sm text-gray-500">Upcoming community events and activities</p>
                 </div>
-                <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    Create Event
-                </button>
+                <CreateEventDialog communityId={slug} />
             </div>
 
             {error && (

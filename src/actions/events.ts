@@ -52,3 +52,35 @@ export async function createRSVP(eventId: string, status: 'GOING' | 'MAYBE' | 'N
 
     return { error };
 }
+
+export async function createEvent(communityId: string, data: {
+    title: string;
+    description: string;
+    event_date: string;
+    location: string;
+    capacity?: number;
+    ticket_price?: number;
+}) {
+    const supabase = await getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Unauthorized' };
+
+    const { data: membership } = await supabase
+        .from('memberships')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('tenant_id', communityId)
+        .single();
+
+    if (!membership) return { error: 'Membership not found' };
+
+    const { error } = await supabase
+        .from('events')
+        .insert({
+            community_id: communityId,
+            created_by: membership.id,
+            ...data
+        });
+
+    return { error };
+}

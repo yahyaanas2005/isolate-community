@@ -1,6 +1,7 @@
 import { getNotices } from '@/actions/notices';
 import NoticeCard from '@/components/notices/NoticeCard';
-import { Bell, Plus } from 'lucide-react';
+import CreateNoticeDialog from '@/components/notices/CreateNoticeDialog';
+import { Bell } from 'lucide-react';
 
 interface NoticesPageProps {
     params: Promise<{ slug: string }>;
@@ -20,10 +21,7 @@ export default async function NoticesPage({ params }: NoticesPageProps) {
                     </h1>
                     <p className="text-sm text-gray-500">Community announcements and updates</p>
                 </div>
-                <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    New Notice
-                </button>
+                <CreateNoticeDialog communityId={slug} />
             </div>
 
             {error && (
