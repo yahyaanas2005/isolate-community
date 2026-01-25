@@ -52,7 +52,7 @@ GRANT ALL ON memberships TO authenticated;
 -- 7. Verify everything is set up correctly
 SELECT 
     'RLS Enabled' as check_name,
-    rowsecurity as status
+    rowsecurity::text as status
 FROM pg_tables 
 WHERE tablename = 'tenants'
 UNION ALL
