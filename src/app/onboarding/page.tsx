@@ -24,13 +24,12 @@ export default function OnboardingPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user');
 
-            // 1. Create Tenant
+            // 1. Create Tenant (without created_by to avoid schema error)
             const { data: tenant, error: tenantError } = await supabase
                 .from('tenants')
                 .insert({
                     name: communityName,
-                    slug: communitySlug,
-                    created_by: user.id
+                    slug: communitySlug
                 })
                 .select()
                 .single();

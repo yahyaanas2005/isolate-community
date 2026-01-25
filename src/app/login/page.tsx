@@ -1,87 +1,145 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { handleAuth } from "./actions";
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
+    const router = useRouter();
+    const supabase = createClient();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    async function handleAuth() {
+        setLoading(true);
+        try {
+            // Try to sign in first
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (signInError) {
+                // If sign in fails, try to sign up
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+
+                if (signUpError) throw signUpError;
+
+                // After signup, sign in
+                const { error: autoSignInError } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+                if (autoSignInError) throw autoSignInError;
+            }
+
+            // Check if user has communities
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
+
+            const { data: memberships } = await supabase
+                .from('memberships')
+                .select('tenant_id, tenants(slug)')
+                .eq('user_id', user.id);
+
+            if (memberships && memberships.length > 0) {
+                // Redirect to first community
+                const firstCommunity = memberships[0].tenants as any;
+                router.push(`/dashboard/${firstCommunity.slug}`);
+            } else {
+                // No communities, go to onboarding
+                router.push('/onboarding');
+            }
+        } catch (e) {
+            alert('Error: ' + (e as Error).message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
     return (
-        <div className="min-h-screen grid lg:grid-cols-2 text-white">
-            {/* Left: Branding */}
-            <div className="hidden lg:flex flex-col justify-between p-12 bg-[#050505] relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-blue-900/20" />
-                <div className="relative z-10">
-                    <Link href="/" className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors">
-                        <ArrowLeft className="w-4 h-4" /> Back to Home
-                    </Link>
-                </div>
-                <div className="relative z-10 max-w-lg">
-                    <h1 className="text-4xl font-bold mb-6">Welcome to Isolate.</h1>
-                    <p className="text-xl text-white/60 leading-relaxed">
+        <div className="min-h-screen flex">
+            {/* Left Side - Branding */}
+            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-purple-700 p-12 flex-col justify-between text-white">
+                <div>
+                    <h1 className="text-4xl font-bold mb-4">Welcome to Isolate.</h1>
+                    <p className="text-xl text-blue-100">
                         Your passport to the world's diverse communities. Join today to unlock access to physical spaces, professional networks, and virtual worlds.
                     </p>
                 </div>
-                <div className="relative z-10 text-sm text-white/30">
-                    &copy; 2026 Isolate Platform
-                </div>
+                <p className="text-sm text-blue-200">© 2026 Isolate Platform</p>
             </div>
 
-            {/* Right: Form */}
-            <div className="flex flex-col items-center justify-center p-6 bg-black">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center lg:text-left">
-                        <h2 className="text-3xl font-bold">Sign in or Join</h2>
-                        <p className="mt-2 text-white/50">
-                            Enter your email to continue.
-                        </p>
+            {/* Right Side - Login Form */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-black">
+                <div className="w-full max-w-md">
+                    <div className="mb-8">
+                        <button
+                            onClick={() => router.push('/')}
+                            className="text-gray-400 hover:text-white mb-6 flex items-center gap-2"
+                        >
+                            ← Back to Home
+                        </button>
+                        <h2 className="text-3xl font-bold text-white mb-2">Sign in or Join</h2>
+                        <p className="text-gray-400">Enter your email to continue.</p>
                     </div>
 
-                    <form className="space-y-6">
+                    <div className="space-y-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-white/70">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Email address
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    className="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/20 focus:border-purple-500 focus:ring-purple-500 focus:outline-none transition-all"
-                                    placeholder="you@example.com"
-                                />
-                            </div>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="you@example.com"
+                            />
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-white/70">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Password
                             </label>
-                            <div className="mt-1">
+                            <div className="relative">
                                 <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    required
-                                    className="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/20 focus:border-purple-500 focus:ring-purple-500 focus:outline-none transition-all"
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     placeholder="••••••••"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-4">
-                            <button
-                                formAction={handleAuth}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 active:scale-[0.98] transition-all"
-                            >
-                                Sign In / Sign Up
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleAuth}
+                            disabled={loading || !email || !password}
+                            className="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {loading ? 'Processing...' : 'Sign In / Sign Up'}
+                        </button>
 
-                        <p className="text-center text-xs text-white/30 mt-4">
-                            If account exists, we'll log you in. <br /> If not, user will be created automatically.
+                        <p className="text-center text-sm text-gray-400 mt-4">
+                            If account exists, we'll log you in.<br />
+                            If not, user will be created automatically.
                         </p>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
