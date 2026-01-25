@@ -1,4 +1,5 @@
 import { Sidebar } from '@/components/Sidebar';
+import GlobalSearch from '@/components/GlobalSearch';
 
 export default async function CommunityLayout({
     children,
@@ -16,10 +17,9 @@ export default async function CommunityLayout({
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="h-16 bg-white border-b flex items-center justify-between px-6 shrink-0">
-                    {/* We can re-add the SearchBar and NotificationBell here if we want them global per community */}
                     <div className="font-semibold text-lg capitalize">{slug.replace('-', ' ')}</div>
                     <div className="flex items-center gap-4">
-                        {/* Placeholders for header items */}
+                        <GlobalSearch communitySlug={slug} />
                     </div>
                 </header>
 
