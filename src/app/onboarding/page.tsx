@@ -53,7 +53,8 @@ export default function OnboardingPage() {
                 .from('tenants')
                 .insert({
                     name: communityName,
-                    slug: communitySlug
+                    slug: communitySlug,
+                    type: 'RESIDENTIAL'  // Add required type field
                 })
                 .select()
                 .single();
