@@ -1,6 +1,7 @@
 import { getCommittees } from '@/actions/committees';
 import CommitteeCard from '@/components/committees/CommitteeCard';
-import { Users, Plus } from 'lucide-react';
+import CreateCommitteeDialog from '@/components/committees/CreateCommitteeDialog';
+import { Users } from 'lucide-react';
 
 interface CommitteesPageProps {
     params: Promise<{ slug: string }>;
@@ -20,10 +21,7 @@ export default async function CommitteesPage({ params }: CommitteesPageProps) {
                     </h1>
                     <p className="text-sm text-gray-500">Community committees and meeting schedules</p>
                 </div>
-                <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    New Committee
-                </button>
+                <CreateCommitteeDialog communityId={slug} />
             </div>
 
             {error && (
