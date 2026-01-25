@@ -64,7 +64,7 @@ export default function GlobalSearch({ communitySlug }: GlobalSearchProps) {
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, communityId: communitySlug })
+                    body: JSON.stringify({ query, communitySlug })
                 });
                 const data = await response.json();
                 setResults(data.results || []);

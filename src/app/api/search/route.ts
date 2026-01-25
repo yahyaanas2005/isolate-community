@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import OpenAI from 'openai';
 
 export async function POST(request: NextRequest) {
     try {
-        const { query, communityId } = await request.json();
+        const { query, communitySlug } = await request.json();
 
         if (!query || query.length < 2) {
             return NextResponse.json({ results: [] });
@@ -17,12 +16,24 @@ export async function POST(request: NextRequest) {
         );
 
         // Get user from session
-        const authHeader = request.headers.get('cookie');
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        // First, resolve slug to tenant UUID
+        const { data: tenant } = await supabase
+            .from('tenants')
+            .select('id, slug')
+            .eq('slug', communitySlug)
+            .single();
+
+        if (!tenant) {
+            return NextResponse.json({ error: 'Community not found' }, { status: 404 });
+        }
+
+        const communityId = tenant.id;  // This is now the proper UUID
 
         // Get user's membership to check permissions
         const { data: membership } = await supabase
@@ -55,7 +66,7 @@ export async function POST(request: NextRequest) {
                 type: 'ticket',
                 title: ticket.title,
                 description: ticket.description,
-                url: `/dashboard/${communityId}/helpdesk`,
+                url: `/dashboard/${communitySlug}/helpdesk`,
                 relevance: 1.0
             });
         });
@@ -73,8 +84,8 @@ export async function POST(request: NextRequest) {
                 id: notice.id,
                 type: 'notice',
                 title: notice.title,
-                description: notice.content.slice(0, 150),
-                url: `/dashboard/${communityId}/notices`,
+                description: notice.content?.slice(0, 150) || '',
+                url: `/dashboard/${communitySlug}/notices`,
                 relevance: 0.9
             });
         });
@@ -93,7 +104,7 @@ export async function POST(request: NextRequest) {
                 type: 'event',
                 title: event.title,
                 description: event.description,
-                url: `/dashboard/${communityId}/events`,
+                url: `/dashboard/${communitySlug}/events`,
                 relevance: 0.8
             });
         });
@@ -113,7 +124,7 @@ export async function POST(request: NextRequest) {
                 type: 'listing',
                 title: listing.title,
                 description: `$${listing.price} - ${listing.description}`,
-                url: `/dashboard/${communityId}/marketplace`,
+                url: `/dashboard/${communitySlug}/marketplace`,
                 relevance: 0.7
             });
         });
@@ -133,7 +144,7 @@ export async function POST(request: NextRequest) {
                     type: 'violation',
                     title: violation.type,
                     description: violation.description,
-                    url: `/dashboard/${communityId}/violations`,
+                    url: `/dashboard/${communitySlug}/violations`,
                     relevance: 0.6
                 });
             });
@@ -153,7 +164,7 @@ export async function POST(request: NextRequest) {
                 type: 'noc',
                 title: noc.title,
                 description: noc.description,
-                url: `/dashboard/${communityId}/requests`,
+                url: `/dashboard/${communitySlug}/requests`,
                 relevance: 0.5
             });
         });
@@ -172,7 +183,7 @@ export async function POST(request: NextRequest) {
                 type: 'visitor',
                 title: visitor.name,
                 description: visitor.purpose,
-                url: `/dashboard/${communityId}/security`,
+                url: `/dashboard/${communitySlug}/security`,
                 relevance: 0.4
             });
         });
