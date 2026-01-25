@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createCommittee } from '@/actions/committees';
 
 interface CreateCommitteeDialogProps {
     communityId: string;
@@ -25,19 +26,19 @@ export default function CreateCommitteeDialog({ communityId }: CreateCommitteeDi
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('/api/committees', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ communityId, ...formData })
+            const result = await createCommittee(communityId, {
+                name: formData.name,
+                description: formData.description,
+                type: formData.type
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to create committee');
+            if (result.error) {
+                alert('Failed to create committee: ' + JSON.stringify(result.error));
+            } else {
+                setIsOpen(false);
+                setFormData({ name: '', description: '', type: 'MANAGEMENT' });
+                router.refresh();
             }
-
-            setIsOpen(false);
-            setFormData({ name: '', description: '', type: 'MANAGEMENT' });
-            router.refresh();
         } catch (err) {
             alert('An error occurred');
         } finally {

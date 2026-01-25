@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createListing } from '@/actions/marketplace';
 
 interface CreateListingDialogProps {
     communityId: string;
@@ -26,23 +27,20 @@ export default function CreateListingDialog({ communityId }: CreateListingDialog
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('/api/marketplace', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    communityId,
-                    ...formData,
-                    price: parseFloat(formData.price)
-                })
+            const result = await createListing(communityId, {
+                title: formData.title,
+                description: formData.description,
+                price: parseFloat(formData.price),
+                category: formData.category
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to create listing');
+            if (result.error) {
+                alert('Failed to create listing: ' + JSON.stringify(result.error));
+            } else {
+                setIsOpen(false);
+                setFormData({ title: '', description: '', price: '', category: 'Furniture' });
+                router.refresh();
             }
-
-            setIsOpen(false);
-            setFormData({ title: '', description: '', price: '', category: 'Furniture' });
-            router.refresh();
         } catch (err) {
             alert('An error occurred');
         } finally {

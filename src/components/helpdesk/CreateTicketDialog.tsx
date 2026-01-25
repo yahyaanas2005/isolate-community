@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createTicket } from '@/actions/helpdesk';
 
 interface CreateTicketDialogProps {
     communityId: string;
 }
 
 const CATEGORIES = ['Maintenance', 'Plumbing', 'Electrical', 'Cleaning', 'Security', 'Other'];
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 
 export default function CreateTicketDialog({ communityId }: CreateTicketDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
@@ -20,26 +21,26 @@ export default function CreateTicketDialog({ communityId }: CreateTicketDialogPr
         title: '',
         description: '',
         category: 'Maintenance',
-        priority: 'MEDIUM'
+        priority: 'MEDIUM' as typeof PRIORITIES[number]
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('/api/tickets', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ communityId, ...formData })
+            const result = await createTicket(communityId, {
+                title: formData.title,
+                description: formData.description,
+                priority: formData.priority
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to create ticket');
+            if (result.error) {
+                alert('Failed to create ticket: ' + JSON.stringify(result.error));
+            } else {
+                setIsOpen(false);
+                setFormData({ title: '', description: '', category: 'Maintenance', priority: 'MEDIUM' });
+                router.refresh();
             }
-
-            setIsOpen(false);
-            setFormData({ title: '', description: '', category: 'Maintenance', priority: 'MEDIUM' });
-            router.refresh();
         } catch (err) {
             alert('An error occurred');
         } finally {
@@ -99,7 +100,7 @@ export default function CreateTicketDialog({ communityId }: CreateTicketDialogPr
                             <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                             <select
                                 value={formData.priority}
-                                onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                                onChange={e => setFormData({ ...formData, priority: e.target.value as typeof PRIORITIES[number] })}
                                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"
                             >
                                 {PRIORITIES.map(pri => (

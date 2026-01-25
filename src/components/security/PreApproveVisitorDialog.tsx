@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { createPreApproval } from '@/actions/security';
 
 interface PreApproveVisitorDialogProps {
     communityId: string;
@@ -14,29 +15,35 @@ export default function PreApproveVisitorDialog({ communityId }: PreApproveVisit
     const router = useRouter();
 
     const [formData, setFormData] = useState({
-        name: '',
-        phone: '',
+        visitor_name: '',
+        visitor_phone: '',
         purpose: '',
-        expected_date: new Date().toISOString().slice(0, 16)
+        valid_from: new Date().toISOString().slice(0, 16),
+        valid_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('/api/visitors', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ communityId, ...formData })
-            });
+            const result = await createPreApproval(communityId, formData);
 
-            if (!response.ok) {
-                throw new Error('Failed to pre-approve visitor');
+            if (result.error) {
+                alert('Failed to pre-approve visitor: ' + JSON.stringify(result.error));
+            } else {
+                setIsOpen(false);
+                setFormData({
+                    visitor_name: '',
+                    visitor_phone: '',
+                    purpose: '',
+                    valid_from: new Date().toISOString().slice(0, 16),
+                    valid_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+                });
+                if (result.otp) {
+                    alert(`Visitor approved! OTP: ${result.otp}`);
+                }
+                router.refresh();
             }
-
-            setIsOpen(false);
-            setFormData({ name: '', phone: '', purpose: '', expected_date: new Date().toISOString().slice(0, 16) });
-            router.refresh();
         } catch (err) {
             alert('An error occurred');
         } finally {
@@ -72,8 +79,8 @@ export default function PreApproveVisitorDialog({ communityId }: PreApproveVisit
                         <input
                             required
                             type="text"
-                            value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            value={formData.visitor_name}
+                            onChange={e => setFormData({ ...formData, visitor_name: e.target.value })}
                             className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                             placeholder="John Doe"
                         />
@@ -85,34 +92,46 @@ export default function PreApproveVisitorDialog({ communityId }: PreApproveVisit
                             <input
                                 required
                                 type="tel"
-                                value={formData.phone}
-                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                value={formData.visitor_phone}
+                                onChange={e => setFormData({ ...formData, visitor_phone: e.target.value })}
                                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                                 placeholder="+1 234 567 8900"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Expected Date/Time</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
                             <input
                                 required
-                                type="datetime-local"
-                                value={formData.expected_date}
-                                onChange={e => setFormData({ ...formData, expected_date: e.target.value })}
+                                type="text"
+                                value={formData.purpose}
+                                onChange={e => setFormData({ ...formData, purpose: e.target.value })}
                                 className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                                placeholder="Delivery, Guest, etc."
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Purpose of Visit</label>
-                        <textarea
-                            required
-                            rows={3}
-                            value={formData.purpose}
-                            onChange={e => setFormData({ ...formData, purpose: e.target.value })}
-                            className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none resize-none"
-                            placeholder="Delivery, Guest, Contractor, etc."
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Valid From</label>
+                            <input
+                                required
+                                type="datetime-local"
+                                value={formData.valid_from}
+                                onChange={e => setFormData({ ...formData, valid_from: e.target.value })}
+                                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
+                            <input
+                                required
+                                type="datetime-local"
+                                value={formData.valid_until}
+                                onChange={e => setFormData({ ...formData, valid_until: e.target.value })}
+                                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4 border-t">
