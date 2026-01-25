@@ -31,7 +31,7 @@ export default async function HelpDeskPage({ params, searchParams }: HelpDeskPag
                     <h1 className="text-2xl font-bold text-gray-900">Help Desk</h1>
                     <p className="text-sm text-gray-500">Raise complaints and track their status</p>
                 </div>
-                <CreateTicketDialog communityId={communityId} categories={categories || []} />
+                <CreateTicketDialog communityId={communityId} />
             </div>
 
             {/* Filters */}
@@ -72,8 +72,8 @@ function FilterButton({ label, active, href }: { label: string, active: boolean,
         <a
             href={href}
             className={`px-3 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${active
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                ? 'bg-gray-900 text-white'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
         >
             {label}
