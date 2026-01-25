@@ -1,5 +1,6 @@
 import { getPatrolLogs, getIncidents } from '@/actions/guard';
-import { Shield, MapPin, AlertTriangle, Plus } from 'lucide-react';
+import ReportIncidentDialog from '@/components/guard/ReportIncidentDialog';
+import { Shield, MapPin, AlertTriangle } from 'lucide-react';
 
 interface GuardPageProps {
     params: Promise<{ slug: string }>;
@@ -20,10 +21,7 @@ export default async function GuardPage({ params }: GuardPageProps) {
                     </h1>
                     <p className="text-sm text-gray-500">Patrol tracking and incident management</p>
                 </div>
-                <button className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
-                    <AlertTriangle className="w-4 h-4" />
-                    Report Incident
-                </button>
+                <ReportIncidentDialog communityId={slug} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

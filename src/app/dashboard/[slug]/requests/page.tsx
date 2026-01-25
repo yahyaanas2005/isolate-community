@@ -1,6 +1,7 @@
 import { getNOCRequests } from '@/actions/noc';
 import NOCCard from '@/components/noc/NOCCard';
-import { FileText, Plus } from 'lucide-react';
+import CreateNOCDialog from '@/components/noc/CreateNOCDialog';
+import { FileText } from 'lucide-react';
 
 interface NOCPageProps {
     params: Promise<{ slug: string }>;
@@ -26,10 +27,7 @@ export default async function NOCPage({ params }: NOCPageProps) {
                     </h1>
                     <p className="text-sm text-gray-500">No Objection Certificates for renovations and alterations</p>
                 </div>
-                <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    New Request
-                </button>
+                <CreateNOCDialog communityId={slug} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

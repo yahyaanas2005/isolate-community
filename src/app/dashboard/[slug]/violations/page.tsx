@@ -1,6 +1,7 @@
 import { getViolations } from '@/actions/violations';
 import ViolationCard from '@/components/violations/ViolationCard';
-import { AlertTriangle, Plus } from 'lucide-react';
+import ReportViolationDialog from '@/components/violations/ReportViolationDialog';
+import { AlertTriangle } from 'lucide-react';
 
 interface ViolationsPageProps {
     params: Promise<{ slug: string }>;
@@ -26,10 +27,7 @@ export default async function ViolationsPage({ params }: ViolationsPageProps) {
                     </h1>
                     <p className="text-sm text-gray-500">Report and track community violations</p>
                 </div>
-                <button className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    Report Violation
-                </button>
+                <ReportViolationDialog communityId={slug} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
