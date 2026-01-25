@@ -1,70 +1,93 @@
-'use client';
+import { getNOCRequests } from '@/actions/noc';
+import NOCCard from '@/components/noc/NOCCard';
+import { FileText, Plus } from 'lucide-react';
 
-import { FileText, Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
+interface NOCPageProps {
+    params: Promise<{ slug: string }>;
+}
 
-export default function RequestsPage({ params }: { params: { slug: string } }) {
-    const requests = [
-        { id: 1, type: 'Move-In NOC', date: '2024-01-20', status: 'APPROVED', fee: '$50.00' },
-        { id: 2, type: 'Renovation Permit', date: '2024-01-22', status: 'IN_REVIEW', fee: '$0.00' },
-    ];
+export default async function NOCPage({ params }: NOCPageProps) {
+    const { slug } = await params;
+    const { data: requests, error } = await getNOCRequests(slug);
+
+    const stats = {
+        total: requests?.length || 0,
+        pending: requests?.filter(r => r.status === 'PENDING').length || 0,
+        approved: requests?.filter(r => r.status === 'APPROVED').length || 0,
+    };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="p-6 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">My Requests</h1>
-                    <p className="text-muted-foreground">Manage your permits, NOCs, and service requests.</p>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <FileText className="w-7 h-7 text-blue-600" />
+                        NOC Requests
+                    </h1>
+                    <p className="text-sm text-gray-500">No Objection Certificates for renovations and alterations</p>
                 </div>
-                <Link href={`/dashboard/${params.slug}/requests/new`} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700">
-                    <Plus className="w-5 h-5" /> New Request
-                </Link>
+                <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    <Plus className="w-4 h-4" />
+                    New Request
+                </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
-                            <tr>
-                                <th className="px-6 py-3">Type</th>
-                                <th className="px-6 py-3">Submitted On</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3">Fee</th>
-                                <th className="px-6 py-3">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {requests.map((req) => (
-                                <tr key={req.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{req.type}</td>
-                                    <td className="px-6 py-4 text-gray-500">{req.date}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                                req.status === 'IN_REVIEW' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-gray-100 text-gray-600'
-                                            }`}>
-                                            {req.status === 'APPROVED' ? <CheckCircle className="w-3 h-3" /> :
-                                                req.status === 'IN_REVIEW' ? <Clock className="w-3 h-3" /> : null}
-                                            {req.status.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 font-mono text-gray-600">{req.fee}</td>
-                                    <td className="px-6 py-4">
-                                        <button className="text-blue-600 hover:text-blue-800 font-medium text-xs">View Details</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                {requests.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">
-                        <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                        No requests found.
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Total Requests</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        </div>
                     </div>
-                )}
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-yellow-100 rounded-lg">
+                            <FileText className="w-5 h-5 text-yellow-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Pending</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-green-100 rounded-lg">
+                            <FileText className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Approved</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.approved}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            {error && (
+                <div className="p-4 bg-red-50 text-red-600 rounded-lg mb-4 text-sm">
+                    Failed to load NOC requests. Please try again.
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {requests?.map(request => (
+                    <NOCCard key={request.id} request={request} />
+                ))}
+            </div>
+
+            {requests?.length === 0 && (
+                <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No NOC requests submitted.</p>
+                </div>
+            )}
         </div>
     );
 }
