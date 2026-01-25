@@ -1,35 +1,17 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getSupabase, getMembershipBySlug, getTenantBySlug } from './shared';
 import { Committee, Meeting } from '@/lib/types/committees';
 
-async function getSupabase() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll(); },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
-                    } catch { }
-                },
-            },
-        }
-    );
-}
-
-export async function getCommittees(communityId: string) {
+export async function getCommittees(communitySlug: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     const { data, error } = await supabase
         .from('committees')
         .select('*')
-        .eq('community_id', communityId);
+        .eq('community_id', tenant.id);
 
     return { data: data as Committee[], error };
 }
@@ -43,4 +25,27 @@ export async function getMeetings(committeeId: string) {
         .order('meeting_date', { ascending: false });
 
     return { data: data as Meeting[], error };
+}
+
+export async function createCommittee(communitySlug: string, data: {
+    name: string;
+    description: string;
+    type: string;
+}) {
+    const { user, membership, tenant, error: authError } = await getMembershipBySlug(communitySlug);
+
+    if (authError || !membership || !tenant) {
+        return { error: authError || 'Membership not found' };
+    }
+
+    const supabase = await getSupabase();
+    const { error } = await supabase
+        .from('committees')
+        .insert({
+            community_id: tenant.id,
+            created_by: membership.id,
+            ...data
+        });
+
+    return { error };
 }

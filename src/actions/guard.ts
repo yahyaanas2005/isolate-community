@@ -1,66 +1,54 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getSupabase, getMembershipBySlug, getTenantBySlug } from './shared';
 import { PatrolLog, Incident } from '@/lib/types/guard';
 
-async function getSupabase() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll(); },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
-                    } catch { }
-                },
-            },
-        }
-    );
-}
-
-export async function getPatrolLogs(communityId: string) {
+export async function getPatrolLogs(communitySlug: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     const { data, error } = await supabase
         .from('patrol_logs')
         .select('*')
-        .eq('community_id', communityId)
+        .eq('community_id', tenant.id)
         .order('started_at', { ascending: false })
         .limit(20);
 
     return { data: data as PatrolLog[], error };
 }
 
-export async function getIncidents(communityId: string) {
+export async function getIncidents(communitySlug: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     const { data, error } = await supabase
         .from('incidents')
         .select('*')
-        .eq('community_id', communityId)
+        .eq('community_id', tenant.id)
         .order('created_at', { ascending: false });
 
     return { data: data as Incident[], error };
 }
 
-export async function createIncident(communityId: string, data: {
+export async function createIncident(communitySlug: string, data: {
     type: string;
     description: string;
     location: string;
     severity: string;
 }) {
-    const supabase = await getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Unauthorized' };
+    const { user, membership, tenant, error: authError } = await getMembershipBySlug(communitySlug);
 
+    if (authError || !user || !tenant) {
+        return { error: authError || 'Unauthorized' };
+    }
+
+    const supabase = await getSupabase();
     const { error } = await supabase
         .from('incidents')
         .insert({
-            community_id: communityId,
+            community_id: tenant.id,
             reported_by: user.id,
             ...data
         });

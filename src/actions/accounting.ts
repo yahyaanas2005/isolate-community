@@ -1,58 +1,45 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getSupabase, getTenantBySlug } from './shared';
 import { GLEntry, Budget } from '@/lib/types/accounting';
 
-async function getSupabase() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll(); },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
-                    } catch { }
-                },
-            },
-        }
-    );
-}
-
-export async function getGLEntries(communityId: string) {
+export async function getGLEntries(communitySlug: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     const { data, error } = await supabase
         .from('general_ledger')
         .select('*')
-        .eq('community_id', communityId)
+        .eq('community_id', tenant.id)
         .order('transaction_date', { ascending: false })
         .limit(50);
 
     return { data: data as GLEntry[], error };
 }
 
-export async function getBudgets(communityId: string) {
+export async function getBudgets(communitySlug: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     const { data, error } = await supabase
         .from('budgets')
         .select('*')
-        .eq('community_id', communityId);
+        .eq('community_id', tenant.id);
 
     return { data: data as Budget[], error };
 }
 
-export async function getAccountingSummary(communityId: string) {
+export async function getAccountingSummary(communitySlug: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: null, error: 'Community not found' };
 
     const { data: entries } = await supabase
         .from('general_ledger')
         .select('debit, credit')
-        .eq('community_id', communityId);
+        .eq('community_id', tenant.id);
 
     const total_income = entries?.reduce((sum, e) => sum + (e.credit || 0), 0) || 0;
     const total_expenses = entries?.reduce((sum, e) => sum + (e.debit || 0), 0) || 0;

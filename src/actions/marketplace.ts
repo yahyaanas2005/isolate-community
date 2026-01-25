@@ -1,37 +1,17 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getSupabase, getMembershipBySlug, getTenantBySlug } from './shared';
 import { Listing, ListingStatus } from '@/lib/types/marketplace';
 
-async function getSupabase() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
-                    } catch { }
-                },
-            },
-        }
-    );
-}
-
-export async function getListings(communityId: string, category?: string) {
+export async function getListings(communitySlug: string, category?: string) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     let query = supabase
         .from('marketplace_listings')
         .select('*')
-        .eq('community_id', communityId)
+        .eq('community_id', tenant.id)
         .eq('status', 'ACTIVE')
         .order('created_at', { ascending: false });
 
@@ -44,7 +24,7 @@ export async function getListings(communityId: string, category?: string) {
 }
 
 export async function createListing(
-    communityId: string,
+    communitySlug: string,
     data: {
         title: string;
         description: string;
@@ -53,23 +33,17 @@ export async function createListing(
         images?: string[];
     }
 ) {
+    const { user, membership, tenant, error: authError } = await getMembershipBySlug(communitySlug);
+
+    if (authError || !membership || !tenant) {
+        return { error: authError || 'Membership not found' };
+    }
+
     const supabase = await getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Unauthorized' };
-
-    const { data: membership } = await supabase
-        .from('memberships')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('tenant_id', communityId)
-        .single();
-
-    if (!membership) return { error: 'Membership not found' };
-
     const { error } = await supabase
         .from('marketplace_listings')
         .insert({
-            community_id: communityId,
+            community_id: tenant.id,
             seller_id: membership.id,
             title: data.title,
             description: data.description,

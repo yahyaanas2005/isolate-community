@@ -1,37 +1,17 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getSupabase, getMembershipBySlug, getTenantBySlug } from './shared';
 import { Visitor, PreApproval, VisitorStatus } from '@/lib/types/security';
 
-async function getSupabase() {
-    const cookieStore = await cookies();
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
-                    } catch { }
-                },
-            },
-        }
-    );
-}
-
-export async function getVisitors(communityId: string, status?: VisitorStatus) {
+export async function getVisitors(communitySlug: string, status?: VisitorStatus) {
     const supabase = await getSupabase();
+    const tenant = await getTenantBySlug(communitySlug);
+    if (!tenant) return { data: [], error: 'Community not found' };
+
     let query = supabase
         .from('visitors')
         .select('*')
-        .eq('community_id', communityId)
+        .eq('community_id', tenant.id)
         .order('created_at', { ascending: false });
 
     if (status) {
@@ -43,7 +23,7 @@ export async function getVisitors(communityId: string, status?: VisitorStatus) {
 }
 
 export async function createPreApproval(
-    communityId: string,
+    communitySlug: string,
     data: {
         visitor_name: string;
         visitor_phone: string;
@@ -52,26 +32,20 @@ export async function createPreApproval(
         purpose: string;
     }
 ) {
-    const supabase = await getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Unauthorized' };
+    const { user, membership, tenant, error: authError } = await getMembershipBySlug(communitySlug);
 
-    const { data: membership } = await supabase
-        .from('memberships')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('tenant_id', communityId)
-        .single();
-
-    if (!membership) return { error: 'Membership not found' };
+    if (authError || !membership || !tenant) {
+        return { error: authError || 'Membership not found' };
+    }
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    const supabase = await getSupabase();
     const { error } = await supabase
         .from('pre_approvals')
         .insert({
-            community_id: communityId,
+            community_id: tenant.id,
             created_by: membership.id,
             visitor_name: data.visitor_name,
             visitor_phone: data.visitor_phone,
