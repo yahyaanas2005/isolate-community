@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getNavItems } from '@/lib/navConfig';
 
 interface SearchResult {
     id: string;
@@ -61,13 +62,29 @@ export default function GlobalSearch({ communitySlug }: GlobalSearchProps) {
         const timer = setTimeout(async () => {
             setLoading(true);
             try {
+                // 1. Local Menu Search
+                const navItems = getNavItems(communitySlug);
+                const menuResults: SearchResult[] = navItems
+                    .filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
+                    .map(item => ({
+                        id: `menu-${item.name}`,
+                        type: 'menu' as any, // casting as any to avoid type error if strictly typed
+                        title: item.name,
+                        description: 'Navigate to ' + item.name,
+                        url: item.href,
+                        relevance: 10
+                    }));
+
+                // 2. API Search
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ query, communitySlug })
                 });
                 const data = await response.json();
-                setResults(data.results || []);
+
+                // Combine results (Menu first)
+                setResults([...menuResults, ...(data.results || [])]);
             } catch (error) {
                 console.error('Search error:', error);
             } finally {
