@@ -1,43 +1,111 @@
 'use server';
 
-import { getSupabase, getMembershipBySlug, getTenantBySlug } from './shared';
-import { Notice } from '@/lib/types/notices';
+import { createClient } from '@/utils/supabase/server';
+import { revalidatePath } from 'next/cache';
 
-export async function getNotices(communitySlug: string) {
-    const supabase = await getSupabase();
-    const tenant = await getTenantBySlug(communitySlug);
-    if (!tenant) return { data: [], error: 'Community not found' };
+export type NoticeType = 'general' | 'targeted' | 'restricted' | 'emergency';
+export type NoticePriority = 'normal' | 'high' | 'urgent' | 'emergency';
+export type BodyFormat = 'html' | 'markdown' | 'plain';
 
-    const { data, error } = await supabase
-        .from('notices')
-        .select('*')
-        .eq('community_id', tenant.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+export async function getNotices(
+    tenantId: string,
+    filters?: {
+        type?: string;
+        search?: string;
+    },
+    page: number = 1
+) {
+    const supabase = await createClient();
+    const PAGE_SIZE = 10;
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
 
-    return { data: data as Notice[], error };
+    let query = supabase
+        .from('announcements')
+        .select(`
+            id,
+            title,
+            body,
+            type,
+            priority,
+            created_at,
+            starts_at,
+            category:announcement_categories(name, color, icon),
+            author:profiles!created_by(full_name, avatar_url)
+        `, { count: 'exact' })
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+    // Filter by published status or user's own drafts
+    // For MVP simplification, we just show all if role check isn't implemented strictly yet
+    // But ideally: status = 'published'
+    query = query.in('status', ['published', 'scheduled']);
+
+    if (filters?.type) query = query.eq('type', filters.type);
+    if (filters?.search) query = query.ilike('title', `%${filters.search}%`);
+
+    const { data, count, error } = await query.range(from, to);
+
+    return { data, count, error };
 }
 
-export async function createNotice(communitySlug: string, data: {
-    title: string;
-    content: string;
-    category: string;
-    priority: string;
-}) {
-    const { user, membership, tenant, error: authError } = await getMembershipBySlug(communitySlug);
+export async function getNoticeCategories(tenantId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('announcement_categories')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('sort_order');
+    return { data, error };
+}
 
-    if (authError || !membership || !tenant) {
-        return { error: authError || 'Membership not found' };
+export async function createNotice(
+    tenantId: string,
+    data: {
+        title: string;
+        body: string;
+        type: NoticeType;
+        priority: NoticePriority;
+        category_id?: string;
+        is_pinned?: boolean;
     }
+) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const supabase = await getSupabase();
+    if (!user) return { error: 'Unauthorized' };
+
     const { error } = await supabase
-        .from('notices')
+        .from('announcements')
         .insert({
-            community_id: tenant.id,
-            created_by: membership.id,
-            ...data
+            tenant_id: tenantId,
+            created_by: user.id,
+            title: data.title,
+            body: data.body,
+            type: data.type,
+            priority: data.priority,
+            category_id: data.category_id,
+            pinned: data.is_pinned || false,
+            status: 'published', // Auto publish for MVP
+            published_at: new Date().toISOString(),
+            published_by: user.id
         });
 
-    return { error };
+    if (error) return { error: error.message };
+
+    revalidatePath(`/dashboard`);
+    return { success: true };
+}
+
+export async function deleteNotice(id: string) {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('announcements')
+        .update({ status: 'deleted', deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+    if (error) return { error: error.message };
+    revalidatePath(`/dashboard`);
+    return { success: true };
 }

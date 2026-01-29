@@ -1,142 +1,155 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
-import { createNotice } from '@/actions/notices';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Megaphone, AlertTriangle, Pin } from 'lucide-react';
+import { createNotice, NoticeType, NoticePriority } from '@/actions/notices';
 import { useRouter } from 'next/navigation';
 
-interface CreateNoticeDialogProps {
-    communityId: string;
-}
-
-const CATEGORIES = ['ANNOUNCEMENT', 'ALERT', 'EVENT', 'MAINTENANCE'];
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-
-export default function CreateNoticeDialog({ communityId }: CreateNoticeDialogProps) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
+export default function CreateNoticeDialog({ tenantId, categories }: { tenantId: string; categories: any[] }) {
     const router = useRouter();
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const [formData, setFormData] = useState({
-        title: '',
-        content: '',
-        category: 'ANNOUNCEMENT',
-        priority: 'MEDIUM'
-    });
+    const [title, setTitle] = useState('');
+    const [body, setBody] = useState('');
+    const [type, setType] = useState<NoticeType>('general');
+    const [priority, setPriority] = useState<NoticePriority>('normal');
+    const [categoryId, setCategoryId] = useState('');
+    const [isPinned, setIsPinned] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            const result = await createNotice(communityId, formData);
 
-            if (result.error) {
-                alert('Failed to create notice: ' + JSON.stringify(result.error));
-            } else {
-                setIsOpen(false);
-                setFormData({ title: '', content: '', category: 'ANNOUNCEMENT', priority: 'MEDIUM' });
-                router.refresh();
-            }
-        } catch (err) {
-            alert('An error occurred');
-        } finally {
-            setLoading(false);
+        const res = await createNotice(tenantId, {
+            title,
+            body,
+            type,
+            priority,
+            category_id: categoryId || undefined,
+            is_pinned: isPinned
+        });
+
+        if (res.success) {
+            setOpen(false);
+            setTitle('');
+            setBody('');
+            setType('general');
+            setPriority('normal');
+            setIsPinned(false);
+            setCategoryId('');
+            router.refresh();
         }
+        setLoading(false);
     };
 
-    if (!isOpen) {
-        return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-                <Plus className="w-4 h-4" />
-                New Notice
-            </button>
-        );
-    }
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="font-semibold text-gray-900">Create Notice</h2>
-                    <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-gray-700">
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <Megaphone className="mr-2 h-4 w-4" /> Publish Notice
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>Publish New Announcement</DialogTitle>
+                    <DialogDescription>
+                        Share updates, alerts, or events with the community.
+                    </DialogDescription>
+                </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                        <input
+                <form onSubmit={handleSubmit} className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Headline</label>
+                        <Input
                             required
-                            type="text"
-                            value={formData.title}
-                            onChange={e => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="Important Community Update"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                        <textarea
-                            required
-                            rows={6}
-                            value={formData.content}
-                            onChange={e => setFormData({ ...formData, content: e.target.value })}
-                            className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                            placeholder="Write your announcement here..."
+                            placeholder="e.g. Annual Meeting Scheduled"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Category</label>
                             <select
-                                value={formData.category}
-                                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={categoryId}
+                                onChange={(e) => setCategoryId(e.target.value)}
                             >
-                                {CATEGORIES.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
+                                <option value="">General</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Priority</label>
                             <select
-                                value={formData.priority}
-                                onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={priority}
+                                onChange={(e) => setPriority(e.target.value as NoticePriority)}
                             >
-                                {PRIORITIES.map(pri => (
-                                    <option key={pri} value={pri}>{pri}</option>
-                                ))}
+                                <option value="normal">Normal</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="emergency">Emergency</option>
                             </select>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-4 border-t">
-                        <button
-                            type="button"
-                            onClick={() => setIsOpen(false)}
-                            className="px-4 py-2 text-gray-600 font-medium text-sm hover:bg-gray-100 rounded-lg"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm disabled:opacity-50"
-                        >
-                            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                            Post Notice
-                        </button>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Content</label>
+                        <textarea
+                            className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            placeholder="Write your announcement here..."
+                            value={body}
+                            onChange={(e) => setBody(e.target.value)}
+                            required
+                        />
                     </div>
+
+                    <div className="flex items-center gap-4 pt-2">
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="pinned"
+                                className="rounded border-gray-300"
+                                checked={isPinned}
+                                onChange={(e) => setIsPinned(e.target.checked)}
+                            />
+                            <label htmlFor="pinned" className="text-sm font-medium flex items-center gap-1">
+                                <Pin className="h-3 w-3" /> Pin to top
+                            </label>
+                        </div>
+
+                        {priority === 'emergency' && (
+                            <div className="text-xs text-red-600 flex items-center gap-1 font-medium bg-red-50 px-2 py-1 rounded">
+                                <AlertTriangle className="h-3 w-3" />
+                                Will trigger push notification
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                        <Button type="submit" disabled={loading} className={priority === 'emergency' ? 'bg-red-600 hover:bg-red-700' : ''}>
+                            {loading ? 'Publishing...' : 'Publish'}
+                        </Button>
+                    </DialogFooter>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -29,6 +29,7 @@ export const getNavItems = (slug: string) => {
     const baseUrl = `/dashboard/${slug}`;
     return [
         { name: 'Overview', href: baseUrl, icon: Home },
+        { name: 'Members', href: `${baseUrl}/members`, icon: Users },
         { name: 'Security & Gate', href: `${baseUrl}/security/guard`, icon: Shield },
         { name: 'Notifications', href: `${baseUrl}/notifications`, icon: Bell },
         { name: 'Events', href: `${baseUrl}/events`, icon: Calendar },
@@ -48,7 +49,7 @@ export const getNavItems = (slug: string) => {
         { name: 'Committees', href: `${baseUrl}/committees`, icon: Users }, // Feature 6
         { name: 'Finance', href: `${baseUrl}/finance`, icon: PieChart },    // Feature 8
         { name: 'Marketing', href: `${baseUrl}/marketing`, icon: Megaphone }, // Feature 9
-        { name: 'Help Board', href: `${baseUrl}/help`, icon: LifeBuoy },    // Feature 3
+        { name: 'Help Desk', href: `${baseUrl}/helpdesk`, icon: LifeBuoy },    // Feature 3
         { name: 'Settings', href: `${baseUrl}/integrations`, icon: Settings },
     ];
 };
