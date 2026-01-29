@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { QRCodeSVG } from 'qrcode.react'; // Using a placeholder div if package missing, check pkg.json?
+// import { QRCodeSVG } from 'qrcode.react';
 // Actually simpler: Just display the text CODE for MVP.
 // Or install `qrcode.react`. I'll try to use simple text code styling first.
 // The user has `lucide-react`.
