@@ -1,77 +1,107 @@
 'use server';
 
-import { getSupabase, getMembershipBySlug, getTenantBySlug } from './shared';
-import { Visitor, PreApproval, VisitorStatus } from '@/lib/types/security';
+import { createClient } from '@/utils/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { addHours, isAfter, isBefore } from 'date-fns';
 
-export async function getVisitors(communitySlug: string, status?: VisitorStatus) {
-    const supabase = await getSupabase();
-    const tenant = await getTenantBySlug(communitySlug);
-    if (!tenant) return { data: [], error: 'Community not found' };
-
-    let query = supabase
-        .from('visitors')
-        .select('*')
-        .eq('community_id', tenant.id)
-        .order('created_at', { ascending: false });
-
-    if (status) {
-        query = query.eq('status', status);
-    }
-
-    const { data, error } = await query;
-    return { data: data as Visitor[], error };
-}
-
-export async function createPreApproval(
-    communitySlug: string,
+export async function createVisitorPass(
+    tenantId: string,
     data: {
         visitor_name: string;
-        visitor_phone: string;
-        valid_from: string;
-        valid_until: string;
-        purpose: string;
+        visitor_type: string; // guest, delivery, etc
+        visit_type: string; // one_time
+        valid_hours: number; // usually 4, 12, 24
+        vehicle_no?: string;
     }
 ) {
-    const { user, membership, tenant, error: authError } = await getMembershipBySlug(communitySlug);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (authError || !membership || !tenant) {
-        return { error: authError || 'Membership not found' };
-    }
+    if (!user) return { error: 'Unauthorized' };
 
-    // Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate a simple 6-digit code for MVP (or UUID)
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    const supabase = await getSupabase();
+    const valid_from = new Date();
+    const valid_to = addHours(valid_from, data.valid_hours || 4);
+
     const { error } = await supabase
-        .from('pre_approvals')
+        .from('visitor_passes')
         .insert({
-            community_id: tenant.id,
-            created_by: membership.id,
+            tenant_id: tenantId,
+            invited_by: user.id,
+            pass_code: code,
             visitor_name: data.visitor_name,
-            visitor_phone: data.visitor_phone,
-            valid_from: data.valid_from,
-            valid_until: data.valid_until,
-            purpose: data.purpose,
-            otp_code: otp
+            visitor_type: data.visitor_type,
+            visit_type: data.visit_type,
+            valid_from: valid_from.toISOString(),
+            valid_to: valid_to.toISOString(),
+            vehicle_no: data.vehicle_no,
+            status: 'active'
         });
 
-    return { error, otp };
+    if (error) return { error: error.message };
+
+    revalidatePath(`/dashboard`);
+    return { success: true, code };
 }
 
-export async function updateVisitorStatus(visitorId: string, status: VisitorStatus) {
-    const supabase = await getSupabase();
-    const updateData: any = { status };
+export async function getMyVisitorPasses(tenantId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (status === 'CHECKED_IN') {
-        updateData.check_in_time = new Date().toISOString();
-    } else if (status === 'CHECKED_OUT') {
-        updateData.check_out_time = new Date().toISOString();
+    if (!user) return { data: [] };
+
+    const { data, error } = await supabase
+        .from('visitor_passes')
+        .select('*')
+        .eq('invited_by', user.id)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+    return { data, error };
+}
+
+// Guard Action
+export async function verifyAndLogEntry(tenantId: string, passCode: string, gateId?: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser(); // the guard
+
+    // 1. Find Pass
+    const { data: pass, error } = await supabase
+        .from('visitor_passes')
+        .select('*')
+        .eq('pass_code', passCode)
+        .eq('tenant_id', tenantId)
+        .single();
+
+    if (error || !pass) return { error: 'Invalid Pass Code' };
+
+    // 2. Validate
+    const now = new Date();
+    if (pass.status !== 'active') return { error: `Pass is ${pass.status}` };
+    if (isAfter(now, new Date(pass.valid_to))) return { error: 'Pass Expired' };
+    if (isBefore(now, new Date(pass.valid_from))) return { error: 'Pass not yet valid' };
+
+    // 3. Log Entry
+    const { error: logError } = await supabase
+        .from('gate_logs')
+        .insert({
+            tenant_id: tenantId,
+            pass_id: pass.id,
+            guard_user_id: user?.id,
+            gate_id: gateId, // optional
+            action: 'entry',
+            timestamp: now.toISOString()
+        });
+
+    // 4. Update Pass Status (if one-time)
+    if (pass.visit_type === 'one_time') {
+        await supabase.from('visitor_passes').update({ status: 'used' }).eq('id', pass.id);
     }
 
-    const { error } = await supabase
-        .from('visitors')
-        .update(updateData)
-        .eq('id', visitorId);
+    if (logError) return { error: 'Logging failed' };
 
-    return { error };
+    revalidatePath(`/dashboard`);
+    return { success: true, visitor: pass.visitor_name };
 }

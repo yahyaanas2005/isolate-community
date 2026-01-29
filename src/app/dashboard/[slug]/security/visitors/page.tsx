@@ -1,28 +1,40 @@
-export default function VisitorsPage({ params }: { params: { slug: string } }) {
+import { getMyVisitorPasses } from '@/actions/security';
+import CreatePassDialog from '@/components/security/CreatePassDialog';
+import VisitorPassList from '@/components/security/VisitorPassList';
+import { createClient } from '@/utils/supabase/server';
+import { ShieldCheck } from 'lucide-react';
+
+interface VisitorsPageProps {
+    params: Promise<{ slug: string }>;
+}
+
+export default async function VisitorsPage({ params }: VisitorsPageProps) {
+    const { slug } = await params;
+    const supabase = await createClient();
+
+    const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).single();
+    const tenantId = tenant?.id || slug;
+
+    // Fetch passes
+    const { data: passes } = await getMyVisitorPasses(tenantId);
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="p-6 max-w-5xl mx-auto space-y-6">
+            <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">My Visitors</h1>
-                    <p className="text-muted-foreground">Pre-approve guests for faster entry.</p>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <ShieldCheck className="w-7 h-7 text-indigo-600" />
+                        My Visitors
+                    </h1>
+                    <p className="text-sm text-gray-500">Manage entry passes for your guests.</p>
                 </div>
-                <button className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md">
-                    + Invite Guest
-                </button>
+                <CreatePassDialog tenantId={tenantId} />
             </div>
 
-            <div className="rounded-md border bg-white">
-                <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
-                    <div className="p-4 rounded-full bg-blue-50 text-blue-500">
-                        {/* Icon placeholder */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold">No active passes</h3>
-                        <p className="text-muted-foreground">Create a pass for your upcoming guests.</p>
-                    </div>
-                </div>
+            <div className="bg-white p-6 rounded-xl border">
+                <h2 className="text-lg font-semibold mb-4">Active Passes</h2>
+                <VisitorPassList passes={passes || []} />
             </div>
         </div>
-    )
+    );
 }
