@@ -28,8 +28,7 @@ export default function DashboardRootPage() {
                     .limit(1);
 
                 if (error || !memberships || memberships.length === 0) {
-                    // No community? Go to onboarding
-                    router.push('/onboarding');
+                    router.push('/welcome');
                 } else {
                     // Redirect to the first community found
                     // @ts-ignore

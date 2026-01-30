@@ -2,35 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-    LayoutDashboard,
-    Shield,
-    Bell,
-    Calendar,
-    FileText,
-    BarChart,
-    CreditCard,
-    Map,
-    TrendingUp,
-    Settings,
-    Home,
-    Trophy,
-    Zap,
-    ShoppingBag,
-    MessageCircle,
-    Briefcase,
-    CheckCircle,
-    Clipboard,
-    AlertTriangle,
-    Users,
-    PieChart,
-    Megaphone,
-    LifeBuoy
-} from 'lucide-react';
 import { getNavItems } from '@/lib/navConfig';
 
 import LanguageSelector from './LanguageSelector';
 import UserNav from './UserNav';
+import { CommunitySwitcher } from './layout/CommunitySwitcher';
 
 interface SidebarProps {
     slug: string;
@@ -42,12 +18,10 @@ export function Sidebar({ slug }: SidebarProps) {
 
     return (
         <div className="w-64 bg-white border-r h-full flex flex-col">
-            <div className="p-6 border-b">
-                <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                    Isolate
-                </h2>
-                <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">Community OS</p>
+            <div className="p-4 border-b">
+                <CommunitySwitcher currentSlug={slug} />
             </div>
+
             <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                 {navItems.map((item) => {
                     // Fix: Exact match for Overview (which is the baseUrl), startsWith for others
