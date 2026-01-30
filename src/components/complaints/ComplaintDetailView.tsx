@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Send, CheckCircle, Clock, AlertTriangle, MessageSquare, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { updateComplaintStatus, addComment, ComplaintStatus } from '@/actions/complaints';
-import { cn } from '@/lib/utils'; // Make sure cn is available or use clsx
+import { cn } from '@/lib/utils';
+import { ComplaintFeedback } from './ComplaintFeedback';
 
 interface ComplaintDetailViewProps {
     complaint: any; // Type should be inferred or defined
@@ -101,6 +102,16 @@ export default function ComplaintDetailView({ complaint, slug }: ComplaintDetail
                             </div>
                         )}
                     </div>
+
+                    {/* Feedback Section (Only if Resolved/Closed) */}
+                    {(status === 'resolved' || status === 'closed') && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <ComplaintFeedback
+                                complaintId={complaint.id}
+                                existingFeedback={complaint.feedback?.[0]}
+                            />
+                        </div>
+                    )}
 
                     {/* Activity Tabs */}
                     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">

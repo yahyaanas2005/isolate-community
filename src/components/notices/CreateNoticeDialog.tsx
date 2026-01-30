@@ -15,11 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Megaphone, AlertTriangle, Pin } from 'lucide-react';
 import { createNotice, NoticeType, NoticePriority } from '@/actions/notices';
 import { useRouter } from 'next/navigation';
+import { TargetAudienceSelector } from './TargetAudienceSelector';
 
 export default function CreateNoticeDialog({ tenantId, categories }: { tenantId: string; categories: any[] }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [targeting, setTargeting] = useState<any>(null);
 
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
@@ -35,10 +37,11 @@ export default function CreateNoticeDialog({ tenantId, categories }: { tenantId:
         const res = await createNotice(tenantId, {
             title,
             body,
-            type,
+            type: targeting ? 'targeted' : 'general',
             priority,
             category_id: categoryId || undefined,
-            is_pinned: isPinned
+            is_pinned: isPinned,
+            targeting
         });
 
         if (res.success) {
@@ -118,6 +121,10 @@ export default function CreateNoticeDialog({ tenantId, categories }: { tenantId:
                             onChange={(e) => setBody(e.target.value)}
                             required
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <TargetAudienceSelector onChange={setTargeting} />
                     </div>
 
                     <div className="flex items-center gap-4 pt-2">

@@ -69,6 +69,7 @@ export async function createNotice(
         priority: NoticePriority;
         category_id?: string;
         is_pinned?: boolean;
+        targeting?: any;
     }
 ) {
     const supabase = await createClient();
@@ -76,7 +77,7 @@ export async function createNotice(
 
     if (!user) return { error: 'Unauthorized' };
 
-    const { error } = await supabase
+    const { data: notice, error } = await supabase
         .from('announcements')
         .insert({
             tenant_id: tenantId,
@@ -90,9 +91,24 @@ export async function createNotice(
             status: 'published', // Auto publish for MVP
             published_at: new Date().toISOString(),
             published_by: user.id
-        });
+        })
+        .select()
+        .single();
 
     if (error) return { error: error.message };
+
+    // Insert Targeting Rules if provided
+    if (data.targeting) {
+        const { error: targetError } = await supabase
+            .from('announcement_target_rules')
+            .insert({
+                announcement_id: notice.id,
+                rules: data.targeting,
+                mode: 'dynamic'
+            });
+
+        if (targetError) console.error('Error saving target rules:', targetError);
+    }
 
     revalidatePath(`/dashboard`);
     return { success: true };

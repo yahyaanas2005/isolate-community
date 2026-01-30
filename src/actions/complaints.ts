@@ -69,7 +69,8 @@ export async function getComplaintById(id: string) {
             comments:complaint_comments(
                 id, comment, created_at, is_internal,
                 user:profiles!user_id(full_name, avatar_url)
-            )
+            ),
+            feedback:complaint_feedback(*)
         `)
         .eq('id', id)
         .single();
@@ -208,5 +209,36 @@ export async function addComment(
     });
 
     revalidatePath(`/dashboard`); // simplistic revalidation
+    return { success: true };
+}
+
+export async function submitFeedback(
+    complaintId: string,
+    rating: number,
+    feedback: string
+) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: 'Unauthorized' };
+
+    const { error } = await supabase.from('complaint_feedback').insert({
+        complaint_id: complaintId,
+        rating,
+        feedback_text: feedback,
+        submitted_by: user.id
+    });
+
+    if (error) return { error: error.message };
+
+    // Log feedback
+    await supabase.from('complaint_logs').insert({
+        complaint_id: complaintId,
+        action: 'feedback_submitted',
+        actor_id: user.id,
+        notes: `Rated: ${rating}/5`
+    });
+
+    revalidatePath(`/dashboard`);
     return { success: true };
 }
