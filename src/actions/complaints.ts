@@ -3,6 +3,8 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+import { classifyTicketPriority } from '@/actions/ai';
+
 export type ComplaintStatus = 'new' | 'acknowledged' | 'assigned' | 'in_progress' | 'on_hold' | 'resolved' | 'closed' | 'reopened' | 'escalated';
 export type ComplaintPriority = 'low' | 'medium' | 'high' | 'critical' | 'emergency';
 
@@ -98,12 +100,33 @@ export async function createComplaint(
     const timestamp = Date.now().toString().slice(-6);
     const complaint_no = `CMP-${timestamp}`;
 
+    // AI AUTO-TRIAGE
+    // If priority is 'low' or not specified (user might underestimate), let AI check it.
+    let finalPriority = data.priority;
+    let autoTriageLog = null;
+
+    // Only auto-triage if description is long enough to analyze
+    if (data.description.length > 10) {
+        const aiAnalysis = await classifyTicketPriority(data.title, data.description);
+        if (aiAnalysis && aiAnalysis.priority) {
+            // Upgrade priority if AI thinks it's higher
+            // Mapping strings to weights could be cleaner, but simple check for now:
+            const weights = { low: 1, medium: 2, high: 3, critical: 4, emergency: 5 };
+            // @ts-ignore
+            if (weights[aiAnalysis.priority] > weights[data.priority]) {
+                // @ts-ignore
+                finalPriority = aiAnalysis.priority;
+                autoTriageLog = `AI Auto-Upgraded priority to ${finalPriority}: ${aiAnalysis.reason}`;
+            }
+        }
+    }
+
     // Calculate SLA Deadlines
     const { data: slaRule } = await supabase
         .from('sla_rules')
         .select('response_time_hours, resolution_time_hours')
         .eq('tenant_id', tenantId)
-        .eq('priority', data.priority)
+        .eq('priority', finalPriority)
         .single();
 
     // Defaults: Response 24h, Resolution 72h if no rule found
@@ -121,7 +144,7 @@ export async function createComplaint(
         title: data.title,
         description: data.description,
         category_id: data.category_id,
-        priority: data.priority,
+        priority: finalPriority,
         location_details: data.location_details,
         is_emergency: data.is_emergency || false,
         status: 'new',
@@ -144,6 +167,15 @@ export async function createComplaint(
         actor_id: user.id,
         notes: 'Complaint raised via portal'
     });
+
+    if (autoTriageLog) {
+        await supabase.from('complaint_logs').insert({
+            complaint_id: result.id,
+            action: 'ai_triage',
+            actor_id: user.id, // Or a system bot ID
+            notes: autoTriageLog
+        });
+    }
 
     revalidatePath(`/dashboard`);
     return { data: result, error: null };

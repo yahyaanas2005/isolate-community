@@ -4,6 +4,7 @@ import MobileNav from '@/components/layout/MobileNav';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { createClient } from '@/utils/supabase/server';
 import { getUnreadCount } from '@/actions/notifications';
+import CoordinatorChat from '@/components/ai/CoordinatorChat';
 
 export default async function CommunityLayout({
     children,
@@ -50,6 +51,8 @@ export default async function CommunityLayout({
                     </div>
                 </main>
             </div>
+            {/* AI Agent Overlay */}
+            <CoordinatorChat />
         </div>
     );
 }
