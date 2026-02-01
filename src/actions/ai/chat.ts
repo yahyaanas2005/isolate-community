@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import { generateEmbedding } from './index';
 import { SYSTEM_MANIFEST, AVAILABLE_TOOLS } from '@/lib/ai/systemManifest';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // TOOL IMPLEMENTATIONS ---------------------------------------------------------
 async function tool_getTicketStatus(tenantId: string, userId: string, ticketId?: string) {
@@ -86,12 +86,18 @@ export async function chatWithCoordinator(
         If asked to perform an action, use the available tools.
         Keep answers concise and helpful.`;
 
+        const openAiMessages: any[] = [
+            { role: 'system', content: systemPrompt },
+            ...messages.map(m => ({
+                role: m.role as any,
+                content: m.content
+            }))
+        ];
+
+        const openai = getOpenAI();
         const response = await openai.chat.completions.create({
             model: 'gpt-4-turbo-preview', // Smart model for tools
-            messages: [
-                { role: 'system', content: systemPrompt },
-                ...messages
-            ],
+            messages: openAiMessages,
             tools: AVAILABLE_TOOLS.map(t => ({
                 type: 'function',
                 function: { name: t.name, description: t.description, parameters: t.parameters }
@@ -104,8 +110,8 @@ export async function chatWithCoordinator(
         // 3. Handle Tool Calls
         if (msg.tool_calls) {
             const toolResults = [];
-            for (const toolCall of msg.tool_calls) {
-                // @ts-ignore
+            for (const rawToolCall of msg.tool_calls) {
+                const toolCall = rawToolCall as any;
                 const args = JSON.parse(toolCall.function.arguments);
                 let output = "Tool execution failed.";
 
@@ -127,9 +133,7 @@ export async function chatWithCoordinator(
             const secondResponse = await openai.chat.completions.create({
                 model: 'gpt-4-turbo-preview',
                 messages: [
-                    { role: 'system', content: systemPrompt },
-                    // @ts-ignore
-                    ...messages,
+                    ...openAiMessages,
                     msg,
                     ...toolResults
                 ]

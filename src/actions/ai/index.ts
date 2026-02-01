@@ -2,7 +2,7 @@
 
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
+const getOpenAI = () => new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
@@ -13,6 +13,7 @@ export async function generateEmbedding(text: string) {
     const content = text.replace(/\n/g, ' ');
 
     try {
+        const openai = getOpenAI();
         const response = await openai.embeddings.create({
             model: 'text-embedding-ada-002',
             input: content,
@@ -27,6 +28,7 @@ export async function generateEmbedding(text: string) {
 
 export async function classifyTicketPriority(subject: string, description: string) {
     try {
+        const openai = getOpenAI();
         const response = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo', // Cost effective for simple classification
             messages: [
