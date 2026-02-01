@@ -38,13 +38,25 @@ export const AVAILABLE_TOOLS = [
         parameters: { type: "object", properties: { ticketId: { type: "string" } } }
     },
     {
-        name: "check_visitor_pass",
-        description: "Check if a visitor pass code is valid or expired.",
-        parameters: { type: "object", properties: { code: { type: "string" } } }
+        name: "list_communities",
+        description: "List all communities the user is a member of with their roles.",
+        parameters: { type: "object", properties: {} }
+    },
+    {
+        name: "create_event",
+        description: "Create a new event/announcement in the community notices.",
+        parameters: {
+            type: "object",
+            properties: {
+                title: { type: "string", description: "Event name" },
+                description: { type: "string", description: "Event details" }
+            },
+            required: ["title"]
+        }
     },
     {
         name: "create_ticket",
-        description: "Create a new help desk ticket.",
+        description: "Create a new help desk ticket for maintenance or issues.",
         parameters: {
             type: "object",
             properties: {

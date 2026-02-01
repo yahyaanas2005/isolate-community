@@ -25,7 +25,6 @@ async function tool_getTicketStatus(tenantId: string, userId: string, ticketId?:
 }
 
 async function tool_createTicket(tenantId: string, userId: string, args: any) {
-    // We reuse the existing createComplaint action logic ideally, but for now direct insert for speed
     const supabase = await createClient();
     const { data, error } = await supabase.from('complaints').insert({
         tenant_id: tenantId,
@@ -33,13 +32,42 @@ async function tool_createTicket(tenantId: string, userId: string, args: any) {
         title: args.title,
         description: args.description,
         priority: args.priority || 'low',
-        category_id: null, // AI doesn't know categories yet, maybe default or try to find?
+        category_id: null,
         status: 'new',
         complaint_no: `AI-${Date.now().toString().slice(-4)}`
     }).select().single();
 
     if (error) return "Failed to create ticket: " + error.message;
-    return `Ticket Created! Reference: ${data.complaint_no}.`;
+    return `✅ Ticket Created! Reference: **${data.complaint_no}**. I've logged your request.`;
+}
+
+async function tool_listCommunities(userId: string) {
+    const supabase = await createClient();
+    const { data } = await supabase.from('memberships')
+        .select('tenant:tenants(name, slug), role')
+        .eq('user_id', userId);
+
+    if (!data || data.length === 0) return "You're not a member of any communities yet.";
+
+    const list = data.map((m: any) => `• **${m.tenant.name}** (${m.role})`);
+    return `You're a member of ${data.length} community(ies):\n${list.join('\n')}`;
+}
+
+async function tool_createEvent(tenantId: string, userId: string, args: any) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('announcements').insert({
+        tenant_id: tenantId,
+        created_by: userId,
+        title: args.title,
+        body: args.description || 'Event details to be announced.',
+        type: 'general',
+        priority: 'normal',
+        status: 'published',
+        published_at: new Date().toISOString()
+    }).select().single();
+
+    if (error) return "Failed to create event: " + error.message;
+    return `🎉 Event **${args.title}** created! View it in Notices.`;
 }
 // ------------------------------------------------------------------------------
 
@@ -74,17 +102,33 @@ export async function chatWithCoordinator(
 
     // 2. Chat Completion with Tools
     try {
-        const systemPrompt = `You are the Community Coordinator AI. 
-        You help residents and staff. 
-        Current User ID: ${user.id}
-        Tenant ID: ${tenantId}
-        
-        KNOWLEDGE BASE:
-        ${contextText}
-        
-        Refuse to answer questions outside of community management.
-        If asked to perform an action, use the available tools.
-        Keep answers concise and helpful.`;
+        const systemPrompt = `You are Cora, the Community Coordinator AI for ${tenantId}.
+
+Your Personality:
+- Friendly, professional, and action-oriented
+- Speak like a helpful neighbor, not a robot
+- Be concise (2-3 sentences max)
+- Use emojis sparingly for warmth
+
+What You MUST Do:
+1. ALWAYS use tools when users ask for actions ("create", "check", "show")
+2. NEVER give long instructions - EXECUTE THE ACTION
+3. If user asks "create event" → use create_event tool immediately
+4. If user asks "my communities" → use list_communities tool
+
+Knowledge (Use this to answer questions):
+${contextText}
+
+Current Context:
+User ID: ${user.id}
+Tenant: ${tenantId}
+
+Examples:
+User: "create event for pool party"
+You: [USE create_event] then say "🎉 Done! Event created."
+
+User: "how many communities am I in?"
+You: [USE list_communities] then show the list.`;
 
         const openAiMessages: any[] = [
             { role: 'system', content: systemPrompt },
@@ -119,6 +163,10 @@ export async function chatWithCoordinator(
                     output = await tool_getTicketStatus(tenantId, user.id, args.ticketId);
                 } else if (toolCall.function.name === 'create_ticket') {
                     output = await tool_createTicket(tenantId, user.id, args);
+                } else if (toolCall.function.name === 'list_communities') {
+                    output = await tool_listCommunities(user.id);
+                } else if (toolCall.function.name === 'create_event') {
+                    output = await tool_createEvent(tenantId, user.id, args);
                 }
 
                 toolResults.push({
