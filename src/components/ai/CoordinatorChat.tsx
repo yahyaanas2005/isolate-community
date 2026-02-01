@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot, Send, X, MessageSquare, Loader2, Sparkles, User } from 'lucide-react';
+import { Bot, Send, X, MessageSquare, Loader2, Sparkles, User, Download, Mail, MapPin } from 'lucide-react';
 import { chatWithCoordinator } from '@/actions/ai/chat';
 import { cn } from '@/lib/utils';
 import { useParams } from 'next/navigation';
@@ -41,35 +41,85 @@ export default function CoordinatorChat() {
         setLoading(false);
     };
 
+    const exportChat = () => {
+        const transcript = messages.map(m => {
+            const timestamp = new Date().toLocaleString();
+            return `[${timestamp}] ${m.role.toUpperCase()}: ${m.content}`;
+        }).join('\\n\\n');
+
+        const blob = new Blob([transcript], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat-transcript-${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const emailTranscript = () => {
+        setInput('Send this chat transcript to my email');
+        handleSend();
+    };
+
     if (!tenantSlug) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
 
             {isOpen && (
-                <Card className="w-[380px] h-[550px] flex flex-col shadow-2xl border-0 animate-in slide-in-from-bottom-5 overflow-hidden" style={{
+                <Card className="w-[400px] h-[600px] flex flex-col shadow-2xl border-0 animate-in slide-in-from-bottom-5 overflow-hidden" style={{
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                 }}>
                     {/* Header */}
-                    <div className="p-4 text-white flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <div className="bg-white/30 backdrop-blur-sm p-2 rounded-full ring-2 ring-white/50">
-                                    <Bot className="w-6 h-6 text-white" />
+                    <div className="p-4 text-white">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <div className="bg-white/30 backdrop-blur-sm p-2 rounded-full ring-2 ring-white/50">
+                                        <Bot className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+                                <div>
+                                    <h3 className="font-bold text-base">Cora</h3>
+                                    <p className="text-[11px] text-white/90">Community Assistant</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-base">Cora</h3>
-                                <p className="text-[11px] text-white/90 flex items-center gap-1.5">
-                                    Community Assistant
-                                </p>
-                            </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 rounded-full" onClick={() => setIsOpen(false)}>
+                                <X className="w-5 h-5" />
+                            </Button>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 rounded-full" onClick={() => setIsOpen(false)}>
-                            <X className="w-5 h-5" />
-                        </Button>
+
+                        {/* Current Community Badge */}
+                        <div className="flex items-center gap-1.5 text-white/90 text-xs bg-white/10 backdrop-blur-sm px-2.5 py-1.5 rounded-full w-fit">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span className="font-medium capitalize">{tenantSlug.replace('-', ' ')}</span>
+                        </div>
                     </div>
+
+                    {/* Action Bar */}
+                    {messages.length > 0 && (
+                        <div className="px-3 pb-2 flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs text-white hover:bg-white/20 gap-1.5"
+                                onClick={exportChat}
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                Export
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs text-white hover:bg-white/20 gap-1.5"
+                                onClick={emailTranscript}
+                            >
+                                <Mail className="w-3.5 h-3.5" />
+                                Email Me
+                            </Button>
+                        </div>
+                    )}
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-white/95 to-white" ref={scrollRef}>
@@ -82,22 +132,22 @@ export default function CoordinatorChat() {
                                     <p className="text-sm text-gray-700 font-medium mb-2">
                                         👋 Hi! I'm Cora, your community assistant
                                     </p>
-                                    <p className="text-xs text-gray-500 max-w-[260px] mx-auto leading-relaxed">
-                                        I can help you create events, check tickets, or answer questions about your community.
+                                    <p className="text-xs text-gray-500 max-w-[280px] mx-auto leading-relaxed">
+                                        Ask me about events, tickets, your communities, activity logs, or request to email transcripts!
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2 justify-center pt-2">
                                     <button
                                         className="px-3 py-1.5 text-xs bg-white border border-purple-200 text-purple-700 rounded-full hover:bg-purple-50 transition-colors font-medium shadow-sm"
-                                        onClick={() => setInput("How many communities am I in?")}
+                                        onClick={() => setInput("What are recent events?")}
                                     >
-                                        My Communities
+                                        Recent Events
                                     </button>
                                     <button
                                         className="px-3 py-1.5 text-xs bg-white border border-blue-200 text-blue-700 rounded-full hover:bg-blue-50 transition-colors font-medium shadow-sm"
-                                        onClick={() => setInput("Check my latest ticket")}
+                                        onClick={() => setInput("Show my activity logs")}
                                     >
-                                        Check Tickets
+                                        My Activity
                                     </button>
                                 </div>
                             </div>
@@ -143,7 +193,7 @@ export default function CoordinatorChat() {
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleSend()}
                             placeholder="Ask or command me..."
-                            className="focus-visible:ring-purple-500 border-gray-200"
+                            className="focus-visible:ring-purple-500 border-gray-200 text-sm"
                         />
                         <Button
                             size="icon"

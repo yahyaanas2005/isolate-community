@@ -66,5 +66,35 @@ export const AVAILABLE_TOOLS = [
             },
             required: ["title", "description"]
         }
+    },
+    {
+        name: "get_user_email",
+        description: "Get the user's email address from their profile.",
+        parameters: { type: "object", properties: {} }
+    },
+    {
+        name: "send_chat_transcript",
+        description: "Send the current chat conversation transcript to the user's email.",
+        parameters: { type: "object", properties: {} }
+    },
+    {
+        name: "get_community_events",
+        description: "Get recent events and notices for the current community.",
+        parameters: {
+            type: "object",
+            properties: {
+                limit: { type: "number", description: "Number of events to return (default 5)" }
+            }
+        }
+    },
+    {
+        name: "get_activity_logs",
+        description: "Get the user's recent activity log in the current community.",
+        parameters: {
+            type: "object",
+            properties: {
+                limit: { type: "number", description: "Number of logs to return (default 10)" }
+            }
+        }
     }
 ];

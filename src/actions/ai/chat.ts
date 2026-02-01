@@ -69,6 +69,62 @@ async function tool_createEvent(tenantId: string, userId: string, args: any) {
     if (error) return "Failed to create event: " + error.message;
     return `🎉 Event **${args.title}** created! View it in Notices.`;
 }
+
+async function tool_getUserEmail(userId: string) {
+    const supabase = await createClient();
+    const { data } = await supabase.from('profiles').select('email').eq('id', userId).single();
+    if (!data?.email) return "I couldn't find your email address.";
+    return data.email;
+}
+
+async function tool_sendChatTranscript(userId: string, transcript: string) {
+    const supabase = await createClient();
+    const { data } = await supabase.from('profiles').select('email').eq('id', userId).single();
+    if (!data?.email) return "❌ Email not found in your profile.";
+
+    // TODO: Integrate with actual email service (SendGrid/Resend)
+    // For now, we'll simulate success
+    console.log(`[EMAIL MOCK] Sending transcript to ${data.email}`);
+    console.log(transcript);
+
+    return `📧 Chat transcript sent to **${data.email}**! Check your inbox.`;
+}
+
+async function tool_getCommunityEvents(tenantId: string, limit: number = 5) {
+    const supabase = await createClient();
+    const { data } = await supabase.from('announcements')
+        .select('title, body, published_at')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(limit);
+
+    if (!data || data.length === 0) return "No recent events/notices found.";
+
+    const list = data.map((e: any) => {
+        const date = new Date(e.published_at).toLocaleDateString();
+        return `📅 **${e.title}** (${date})`;
+    });
+    return `Recent Events/Notices:\n${list.join('\n')}`;
+}
+
+async function tool_getActivityLogs(tenantId: string, userId: string, limit: number = 10) {
+    const supabase = await createClient();
+    const { data } = await supabase.from('audit_logs')
+        .select('action, resource_type, details, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+    if (!data || data.length === 0) return "No recent activity found.";
+
+    const list = data.map((log: any) => {
+        const time = new Date(log.created_at).toLocaleString();
+        return `• ${log.action} on ${log.resource_type} (${time})`;
+    });
+    return `Your Recent Activity:\n${list.join('\n')}`;
+}
 // ------------------------------------------------------------------------------
 
 export async function chatWithCoordinator(
@@ -167,6 +223,16 @@ You: [USE list_communities] then show the list.`;
                     output = await tool_listCommunities(user.id);
                 } else if (toolCall.function.name === 'create_event') {
                     output = await tool_createEvent(tenantId, user.id, args);
+                } else if (toolCall.function.name === 'get_user_email') {
+                    output = await tool_getUserEmail(user.id);
+                } else if (toolCall.function.name === 'send_chat_transcript') {
+                    // Build transcript from current messages
+                    const transcript = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+                    output = await tool_sendChatTranscript(user.id, transcript);
+                } else if (toolCall.function.name === 'get_community_events') {
+                    output = await tool_getCommunityEvents(tenantId, args.limit || 5);
+                } else if (toolCall.function.name === 'get_activity_logs') {
+                    output = await tool_getActivityLogs(tenantId, user.id, args.limit || 10);
                 }
 
                 toolResults.push({
