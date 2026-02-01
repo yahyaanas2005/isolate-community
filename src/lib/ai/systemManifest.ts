@@ -96,5 +96,16 @@ export const AVAILABLE_TOOLS = [
                 limit: { type: "number", description: "Number of logs to return (default 10)" }
             }
         }
+    },
+    {
+        name: "navigate_to",
+        description: "Navigate the user to a specific page/section (notifications, profile, notices, helpdesk, finance, members, security, settings).",
+        parameters: {
+            type: "object",
+            properties: {
+                destination: { type: "string", description: "Where to navigate (e.g., 'notifications', 'profile', 'helpdesk')" }
+            },
+            required: ["destination"]
+        }
     }
 ];

@@ -82,10 +82,13 @@ async function tool_sendChatTranscript(userId: string, transcript: string) {
     const { data } = await supabase.from('profiles').select('email').eq('id', userId).single();
     if (!data?.email) return "❌ Email not found in your profile.";
 
-    // TODO: Integrate with actual email service (SendGrid/Resend)
-    // For now, we'll simulate success
-    console.log(`[EMAIL MOCK] Sending transcript to ${data.email}`);
-    console.log(transcript);
+    // Use real email service
+    const { sendChatTranscriptEmail } = await import('@/lib/email');
+    const result = await sendChatTranscriptEmail(data.email, transcript);
+
+    if (!result.success) {
+        return `❌ Failed to send email: ${result.error || 'Unknown error'}`;
+    }
 
     return `📧 Chat transcript sent to **${data.email}**! Check your inbox.`;
 }
@@ -124,6 +127,27 @@ async function tool_getActivityLogs(tenantId: string, userId: string, limit: num
         return `• ${log.action} on ${log.resource_type} (${time})`;
     });
     return `Your Recent Activity:\n${list.join('\n')}`;
+}
+
+// Navigation Actions - Returns a special marker that the client can detect
+async function tool_navigateTo(tenantSlug: string, destination: string) {
+    const routes: Record<string, string> = {
+        'notifications': `/dashboard/${tenantSlug}/notifications`,
+        'profile': `/dashboard/${tenantSlug}/profile`,
+        'notices': `/dashboard/${tenantSlug}/notices`,
+        'events': `/dashboard/${tenantSlug}/notices`,
+        'helpdesk': `/dashboard/${tenantSlug}/helpdesk`,
+        'tickets': `/dashboard/${tenantSlug}/helpdesk`,
+        'finance': `/dashboard/${tenantSlug}/finance`,
+        'members': `/dashboard/${tenantSlug}/members`,
+        'security': `/dashboard/${tenantSlug}/security`,
+        'settings': `/dashboard/${tenantSlug}/settings/roles`,
+    };
+
+    const route = routes[destination.toLowerCase()];
+    if (!route) return `I don't know how to navigate to "${destination}". Try: notifications, profile, notices, helpdesk, finance, members, security, or settings.`;
+
+    return `[NAVIGATE:${route}] Taking you to ${destination}...`;
 }
 // ------------------------------------------------------------------------------
 
@@ -233,6 +257,8 @@ You: [USE list_communities] then show the list.`;
                     output = await tool_getCommunityEvents(tenantId, args.limit || 5);
                 } else if (toolCall.function.name === 'get_activity_logs') {
                     output = await tool_getActivityLogs(tenantId, user.id, args.limit || 10);
+                } else if (toolCall.function.name === 'navigate_to') {
+                    output = await tool_navigateTo(tenantSlug, args.destination);
                 }
 
                 toolResults.push({

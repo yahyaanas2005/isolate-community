@@ -31,6 +31,14 @@ export default function LoginPage() {
 
                 if (signUpError) throw signUpError;
 
+                // Wait for email confirmation if required, or auto-signin
+                if (signUpData?.user && !signUpData.user.email_confirmed_at) {
+                    // Email confirmation required - inform user
+                    alert('Please check your email to confirm your account, then sign in.');
+                    setLoading(false);
+                    return;
+                }
+
                 // After signup, sign in
                 const { error: autoSignInError } = await supabase.auth.signInWithPassword({
                     email,
@@ -38,6 +46,27 @@ export default function LoginPage() {
                 });
 
                 if (autoSignInError) throw autoSignInError;
+
+                // --- FALLBACK: Manually create profile if trigger didn't run ---
+                const { data: { user: newUser } } = await supabase.auth.getUser();
+                if (newUser) {
+                    // Check if profile exists
+                    const { data: existingProfile } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('id', newUser.id)
+                        .single();
+
+                    if (!existingProfile) {
+                        // Create profile manually (fallback for when trigger isn't set up)
+                        await supabase.from('profiles').insert({
+                            id: newUser.id,
+                            email: newUser.email,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        });
+                    }
+                }
             }
 
             // Check if user has communities
@@ -125,6 +154,16 @@ export default function LoginPage() {
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => router.push('/forgot-password')}
+                                className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                            >
+                                Forgot password?
+                            </button>
                         </div>
 
                         <button
