@@ -132,6 +132,50 @@ export async function deleteNotice(id: string) {
         .eq('id', id);
 
     if (error) return { error: error.message };
+    return { success: true };
+}
+
+export async function markNoticeAsRead(noticeId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from('notice_reads').upsert({
+        notice_id: noticeId,
+        user_id: user.id,
+        read_at: new Date().toISOString()
+    }, { onConflict: 'notice_id,user_id' });
+
+    revalidatePath(`/dashboard`);
+}
+
+export async function addNoticeComment(noticeId: string, comment: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Unauthorized' };
+
+    const { error } = await supabase.from('notice_comments').insert({
+        notice_id: noticeId,
+        user_id: user.id,
+        comment
+    });
+
+    if (error) return { error: error.message };
     revalidatePath(`/dashboard`);
     return { success: true };
 }
+
+export async function getNoticeComments(noticeId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('notice_comments')
+        .select(`
+            id, comment, created_at,
+            user:profiles!user_id(full_name, avatar_url)
+        `)
+        .eq('notice_id', noticeId)
+        .order('created_at', { ascending: true });
+
+    return { data, error };
+}
+

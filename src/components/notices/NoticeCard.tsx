@@ -3,8 +3,12 @@
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Pin, AlertTriangle, Calendar, Megaphone } from 'lucide-react';
+import { Pin, AlertTriangle, Calendar, Megaphone, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { markNoticeAsRead } from '@/actions/notices';
+
 
 export default function NoticeCard({ notice }: { notice: any }) {
     const isEmergency = notice.priority === 'emergency' || notice.priority === 'urgent';
@@ -60,6 +64,43 @@ export default function NoticeCard({ notice }: { notice: any }) {
                     </div>
                 </div>
             </div>
+            {/* Actions Footer */}
+            <div className="pt-2 flex justify-end gap-2 border-t mt-4">
+                <AcknowledgeButton noticeId={notice.id} initialRead={false} />
+            </div>
         </div>
+    );
+}
+
+function AcknowledgeButton({ noticeId, initialRead }: { noticeId: string, initialRead: boolean }) {
+    const [read, setRead] = useState(initialRead);
+    const [loading, setLoading] = useState(false);
+
+    const handleRead = async () => {
+        setLoading(true);
+        await markNoticeAsRead(noticeId);
+        setRead(true);
+        setLoading(false);
+    };
+
+    if (read) {
+        return (
+            <div className="flex items-center text-xs text-green-600 font-medium px-3 py-2">
+                <CheckCircle2 className="w-4 h-4 mr-1.5" /> Acknowledged
+            </div>
+        );
+    }
+
+    return (
+        <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            onClick={handleRead}
+            disabled={loading}
+        >
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            {loading ? 'Marking...' : 'Acknowledge'}
+        </Button>
     );
 }

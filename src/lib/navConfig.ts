@@ -22,7 +22,8 @@ import {
     Users,
     PieChart,
     Megaphone,
-    LifeBuoy
+    LifeBuoy,
+    Inbox
 } from 'lucide-react';
 
 export const getNavItems = (slug: string) => {
@@ -51,6 +52,9 @@ export const getNavItems = (slug: string) => {
         { name: 'Finance', href: `${baseUrl}/finance`, icon: PieChart },    // Feature 8
         { name: 'Marketing', href: `${baseUrl}/marketing`, icon: Megaphone }, // Feature 9
         { name: 'Help Desk', href: `${baseUrl}/helpdesk`, icon: LifeBuoy },
+        { name: 'Staff Queue', href: `${baseUrl}/helpdesk/work-panel`, icon: Inbox },
+        { name: 'Roles & Perms', href: `${baseUrl}/settings/roles`, icon: Shield },
+        { name: 'Audit Logs', href: `${baseUrl}/settings/audit-logs`, icon: FileText },
         { name: 'Settings', href: `${baseUrl}/helpdesk/settings`, icon: Settings },
     ];
 };
