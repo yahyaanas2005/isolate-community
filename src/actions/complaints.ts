@@ -98,6 +98,22 @@ export async function createComplaint(
     const timestamp = Date.now().toString().slice(-6);
     const complaint_no = `CMP-${timestamp}`;
 
+    // Calculate SLA Deadlines
+    const { data: slaRule } = await supabase
+        .from('sla_rules')
+        .select('response_time_hours, resolution_time_hours')
+        .eq('tenant_id', tenantId)
+        .eq('priority', data.priority)
+        .single();
+
+    // Defaults: Response 24h, Resolution 72h if no rule found
+    const responseHours = slaRule?.response_time_hours || 24;
+    const resolutionHours = slaRule?.resolution_time_hours || 72;
+
+    const now = new Date();
+    const responseDeadline = new Date(now.getTime() + responseHours * 60 * 60 * 1000);
+    const resolutionDeadline = new Date(now.getTime() + resolutionHours * 60 * 60 * 1000);
+
     const payload = {
         tenant_id: tenantId,
         reported_by: user.id,
@@ -108,7 +124,9 @@ export async function createComplaint(
         priority: data.priority,
         location_details: data.location_details,
         is_emergency: data.is_emergency || false,
-        status: 'new'
+        status: 'new',
+        sla_response_deadline: responseDeadline.toISOString(),
+        sla_resolution_deadline: resolutionDeadline.toISOString()
     };
 
     const { data: result, error } = await supabase

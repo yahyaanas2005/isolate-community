@@ -41,6 +41,12 @@ export async function getNotices(
     // But ideally: status = 'published'
     query = query.in('status', ['published', 'scheduled']);
 
+    // Filter for Active Notices (Started and Not Expired)
+    // Note: Supabase NOW() comparison might be better done in DB, but simple filter helps
+    const now = new Date().toISOString();
+    query = query.or(`starts_at.is.null,starts_at.lte.${now}`)
+        .or(`ends_at.is.null,ends_at.gt.${now}`);
+
     if (filters?.type) query = query.eq('type', filters.type);
     if (filters?.search) query = query.ilike('title', `%${filters.search}%`);
 
@@ -70,6 +76,8 @@ export async function createNotice(
         category_id?: string;
         is_pinned?: boolean;
         targeting?: any;
+        starts_at?: string;
+        ends_at?: string;
     }
 ) {
     const supabase = await createClient();
@@ -88,8 +96,10 @@ export async function createNotice(
             priority: data.priority,
             category_id: data.category_id,
             pinned: data.is_pinned || false,
-            status: 'published', // Auto publish for MVP
-            published_at: new Date().toISOString(),
+            status: data.starts_at && new Date(data.starts_at) > new Date() ? 'scheduled' : 'published',
+            published_at: data.starts_at && new Date(data.starts_at) > new Date() ? null : new Date().toISOString(),
+            starts_at: data.starts_at || new Date().toISOString(),
+            ends_at: data.ends_at,
             published_by: user.id
         })
         .select()

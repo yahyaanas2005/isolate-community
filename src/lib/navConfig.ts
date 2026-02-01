@@ -31,6 +31,7 @@ export const getNavItems = (slug: string) => {
         { name: 'Overview', href: baseUrl, icon: Home },
         { name: 'Members', href: `${baseUrl}/members`, icon: Users },
         { name: 'Security & Gate', href: `${baseUrl}/security/guard`, icon: Shield },
+        { name: 'Notices', href: `${baseUrl}/notices`, icon: Megaphone },
         { name: 'Notifications', href: `${baseUrl}/notifications`, icon: Bell },
         { name: 'Events', href: `${baseUrl}/events`, icon: Calendar },
         { name: 'Marketplace', href: `${baseUrl}/marketplace`, icon: ShoppingBag }, // Feature 1
@@ -49,7 +50,7 @@ export const getNavItems = (slug: string) => {
         { name: 'Committees', href: `${baseUrl}/committees`, icon: Users }, // Feature 6
         { name: 'Finance', href: `${baseUrl}/finance`, icon: PieChart },    // Feature 8
         { name: 'Marketing', href: `${baseUrl}/marketing`, icon: Megaphone }, // Feature 9
-        { name: 'Help Desk', href: `${baseUrl}/helpdesk`, icon: LifeBuoy },    // Feature 3
-        { name: 'Settings', href: `${baseUrl}/integrations`, icon: Settings },
+        { name: 'Help Desk', href: `${baseUrl}/helpdesk`, icon: LifeBuoy },
+        { name: 'Settings', href: `${baseUrl}/helpdesk/settings`, icon: Settings },
     ];
 };

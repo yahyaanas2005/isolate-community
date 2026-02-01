@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Megaphone, AlertTriangle, Pin } from 'lucide-react';
+import { Megaphone, AlertTriangle, Pin, Calendar, Clock, X } from 'lucide-react';
 import { createNotice, NoticeType, NoticePriority } from '@/actions/notices';
 import { useRouter } from 'next/navigation';
 import { TargetAudienceSelector } from './TargetAudienceSelector';
@@ -29,6 +29,9 @@ export default function CreateNoticeDialog({ tenantId, categories }: { tenantId:
     const [priority, setPriority] = useState<NoticePriority>('normal');
     const [categoryId, setCategoryId] = useState('');
     const [isPinned, setIsPinned] = useState(false);
+    const [startsAt, setStartsAt] = useState('');
+    const [endsAt, setEndsAt] = useState('');
+    const [scheduleMode, setScheduleMode] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,7 +44,10 @@ export default function CreateNoticeDialog({ tenantId, categories }: { tenantId:
             priority,
             category_id: categoryId || undefined,
             is_pinned: isPinned,
-            targeting
+
+            targeting,
+            starts_at: startsAt || undefined,
+            ends_at: endsAt || undefined
         });
 
         if (res.success) {
@@ -51,7 +57,11 @@ export default function CreateNoticeDialog({ tenantId, categories }: { tenantId:
             setType('general');
             setPriority('normal');
             setIsPinned(false);
+
             setCategoryId('');
+            setStartsAt('');
+            setEndsAt('');
+            setScheduleMode(false);
             router.refresh();
         }
         setLoading(false);
@@ -125,6 +135,49 @@ export default function CreateNoticeDialog({ tenantId, categories }: { tenantId:
 
                     <div className="space-y-2">
                         <TargetAudienceSelector onChange={setTargeting} />
+                    </div>
+
+                    <div className="space-y-4 pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-gray-500" />
+                                Publishing Schedule
+                            </label>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setScheduleMode(!scheduleMode)}
+                                className={scheduleMode ? "text-blue-600 bg-blue-50" : "text-gray-500"}
+                            >
+                                {scheduleMode ? 'Cancel Schedule' : 'Set Schedule'}
+                            </Button>
+                        </div>
+
+                        {scheduleMode && (
+                            <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="space-y-1">
+                                    <span className="text-xs text-gray-500">Publish At</span>
+                                    <Input
+                                        type="datetime-local"
+                                        value={startsAt}
+                                        onChange={(e) => setStartsAt(e.target.value)}
+                                        className="text-sm"
+                                    />
+                                    <p className="text-[10px] text-gray-400">Leave empty for "Now"</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-xs text-gray-500">Expire At</span>
+                                    <Input
+                                        type="datetime-local"
+                                        value={endsAt}
+                                        onChange={(e) => setEndsAt(e.target.value)}
+                                        className="text-sm"
+                                    />
+                                    <p className="text-[10px] text-gray-400">Optional auto-archive</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-4 pt-2">
